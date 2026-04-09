@@ -1,0 +1,27 @@
+<component name="libraryTable">
+  <library name="io.github.spair.imgui.java.app" type="repository">
+    <properties maven-id="io.github.spair:imgui-java-app:1.90.0" />
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/imgui-java-app-1.90.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-3.3.6.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-glfw-3.3.6.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-opengl-3.3.6.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-3.3.6-natives-linux.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-glfw-3.3.6-natives-linux.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-opengl-3.3.6-natives-linux.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-3.3.6-natives-windows.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-glfw-3.3.6-natives-windows.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-opengl-3.3.6-natives-windows.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-3.3.6-natives-macos.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-glfw-3.3.6-natives-macos.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-opengl-3.3.6-natives-macos.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-3.3.6-natives-macos-arm64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-glfw-3.3.6-natives-macos-arm64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/lwjgl-opengl-3.3.6-natives-macos-arm64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/imgui-java-binding-1.90.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/imgui-java-lwjgl3-1.90.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
