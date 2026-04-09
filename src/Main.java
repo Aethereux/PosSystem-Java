@@ -24,20 +24,24 @@ public class Main extends Application {
         // We MUST create a fresh config even for the first font to avoid NullPointerException
         ImFontConfig zenlessConfig = new ImFontConfig();
         // No MergeMode here because it's the first font
-        loadFontResource(io, "/resources/Font.bin", 16.0f, zenlessConfig, null, true);
-        zenlessConfig.destroy(); // Destroy immediately after use
+        // Load at high resolution (42pt) for crisp rendering, then scale down globally
+        float hiResSize = 42.0f;
+        float targetSize = 18.0f;
+        loadFontResource(io, "/resources/Font.bin", hiResSize, zenlessConfig, null, true);
+        zenlessConfig.destroy();
 
-        // SECONDARY FONT (FontAwesome)
+        // SECONDARY FONT (FontAwesome) — also at high resolution
         ImFontConfig faConfig = new ImFontConfig();
         faConfig.setMergeMode(true);
         faConfig.setPixelSnapH(true);
-        faConfig.setGlyphMinAdvanceX(16.0f);
+        faConfig.setGlyphMinAdvanceX(hiResSize);
 
         short[] faRanges = new short[]{ FontAwesomeData.ICON_MIN_FA, FontAwesomeData.ICON_MAX_FA, 0 };
-        loadFontResource(io, "/resources/font_awesome.bin", 15.0f, faConfig, faRanges, false);
+        loadFontResource(io, "/resources/font_awesome.bin", hiResSize, faConfig, faRanges, false);
 
-        // Build
+        // Build and set global scale so default text renders at targetSize
         io.getFonts().build();
+        io.setFontGlobalScale(targetSize / hiResSize);
         faConfig.destroy();
     }
 
