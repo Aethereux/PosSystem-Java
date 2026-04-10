@@ -24,7 +24,6 @@ public class POSScreen {
     private final CommandInvoker commandInvoker = new CommandInvoker();
     private final ImBoolean seniorPwdDiscount = new ImBoolean(false);
     private final ImBoolean promoCodeDiscount = new ImBoolean(false);
-    private final ImBoolean bulkOrderDiscount = new ImBoolean(false);
 
     {
         commandInvoker.setCommand(new AddItem(orderState, "Nike Dunk Low Panda", 5495.00f));
@@ -274,7 +273,7 @@ public class POSScreen {
         ImGui.spacing();
 
         float subtotal = orderState.getTotal();
-        float discountAmount = subtotal * getDiscountRate();
+        float discountAmount = calculateDiscountAmount(orderState);
         float finalTotal = Math.max(0, subtotal - discountAmount);
 
         String[] totalLabels = {"VATable Sales:", "VAT Amount:", "VAT-Exempt:", "VAT-Zero:", "Discount:", "Total Amount:"};
@@ -345,19 +344,19 @@ public class POSScreen {
             float tileH = 140;
 
             if (renderPaymentTile("cash_tile", FontAwesomeData.ICON_FA_MONEY_BILL_WAVE, "Cash", tileW, tileH)) {
-                PaymentContext paymentContext = new PaymentContext();
-                paymentContext.setStrategy(new CashPayment());
-                commandInvoker.setCommand(new Pay(orderState, (PaymentStrategy) paymentContext));
+                PaymentStrategy paymentStrategy = new CashPayment();
+                commandInvoker.setCommand(new Pay(orderState, paymentStrategy));
                 commandInvoker.execute();
+                ImGui.closeCurrentPopup();
             }
 
             ImGui.sameLine();
 
             if (renderPaymentTile("gcash_tile", FontAwesomeData.ICON_FA_MOBILE_ALT, "GCash", tileW, tileH)) {
-                PaymentContext paymentContext = new PaymentContext();
-                paymentContext.setStrategy(new GCashPayment());
-                commandInvoker.setCommand(new Pay(orderState, (PaymentStrategy) paymentContext));
+                PaymentStrategy paymentStrategy = new GCashPayment();
+                commandInvoker.setCommand(new Pay(orderState, paymentStrategy));
                 commandInvoker.execute();
+                ImGui.closeCurrentPopup();
             }
 
             ImGui.spacing();
@@ -414,19 +413,19 @@ public class POSScreen {
         return clicked;
     }
 
-    private float getDiscountRate() {
-        float rate = 0;
+    private float calculateDiscountAmount(OrderState state) {
+        DiscountContext discountContext = new DiscountContext();
+        float totalDiscount = 0;
 
         if (seniorPwdDiscount.get()) {
-            rate += 0.20f;
+            discountContext.setStrategy(new SpecialDiscount());
+            totalDiscount += discountContext.executeDiscount(state);
         }
         if (promoCodeDiscount.get()) {
-            rate += 0.10f;
-        }
-        if (bulkOrderDiscount.get()) {
-            rate += 0.05f;
+            discountContext.setStrategy(new PromoDiscount());
+            totalDiscount += discountContext.executeDiscount(state);
         }
 
-        return Math.min(rate, 0.60f);
+        return totalDiscount;
     }
 }
