@@ -219,10 +219,15 @@ public class POSScreen {
 
         // Scrollable items area — only this child scrolls
         float lineH = ImGui.getTextLineHeightWithSpacing();
-    float footerH = lineH * 12 + 165;
-    float itemsStartY = ImGui.getCursorPosY();
-    float footerY = ImGui.getWindowHeight() - footerH - pad;
-    float itemsH = Math.max(lineH * 2, footerY - itemsStartY);
+        float itemsStartY = ImGui.getCursorPosY();
+        float availableBodyH = ImGui.getWindowHeight() - itemsStartY - pad;
+        float minItemsH = lineH * 7;
+        float footerTargetH = lineH * 10 + 112;
+        float footerMinH = lineH * 8 + 96;
+        float footerMaxBySpace = Math.max(footerMinH, availableBodyH - minItemsH - 8);
+        float footerH = Math.max(footerMinH, Math.min(footerTargetH, footerMaxBySpace));
+        float itemsH = Math.max(minItemsH, availableBodyH - footerH - 8);
+        float footerY = itemsStartY + itemsH + 8;
         float itemsW = ImGui.getContentRegionAvailX();
 
         ImGui.beginChild("##order_items", itemsW, itemsH);
@@ -340,7 +345,7 @@ public class POSScreen {
             float tileW = (ImGui.getContentRegionAvailX() - 8) / 2;
             float tileH = 140;
 
-            if (ImGui.button(FontAwesomeData.ICON_FA_MONEY_BILL_WAVE + "\nCash", tileW, tileH)) {
+            if (renderPaymentTile("cash_tile", FontAwesomeData.ICON_FA_MONEY_BILL_WAVE, "Cash", tileW, tileH)) {
                 commandInvoker.setCommand(new Pay(orderState));
                 commandInvoker.execute();
                 ImGui.closeCurrentPopup();
@@ -348,7 +353,7 @@ public class POSScreen {
 
             ImGui.sameLine();
 
-            if (ImGui.button(FontAwesomeData.ICON_FA_MOBILE_ALT + "\nGCash", tileW, tileH)) {
+            if (renderPaymentTile("gcash_tile", FontAwesomeData.ICON_FA_MOBILE_ALT, "GCash", tileW, tileH)) {
                 commandInvoker.setCommand(new Pay(orderState));
                 commandInvoker.execute();
                 ImGui.closeCurrentPopup();
@@ -368,6 +373,44 @@ public class POSScreen {
 
         ImGui.endChild(); // order_panel
         ImGui.popStyleVar(); // ChildRounding
+    }
+
+    private boolean renderPaymentTile(String id, String icon, String label, float width, float height) {
+        boolean clicked = ImGui.button("##" + id, width, height);
+
+        ImVec2 rectMin = new ImVec2();
+        ImVec2 rectMax = new ImVec2();
+        ImGui.getItemRectMin(rectMin);
+        ImGui.getItemRectMax(rectMax);
+
+        float rectW = rectMax.x - rectMin.x;
+        float rectH = rectMax.y - rectMin.y;
+        float lineH = ImGui.getTextLineHeight();
+        float iconScale = 1.25f;
+        float iconH = lineH * iconScale;
+        float labelH = lineH;
+        float gap = 8;
+        float contentH = iconH + gap + labelH;
+        float topY = rectMin.y + (rectH - contentH) * 0.5f;
+
+        ImGui.setWindowFontScale(iconScale);
+        float iconW = ImGui.calcTextSizeX(icon);
+        ImGui.setWindowFontScale(1.0f);
+        float labelW = ImGui.calcTextSizeX(label);
+
+        float iconX = rectMin.x + (rectW - iconW) * 0.5f;
+        float labelX = rectMin.x + (rectW - labelW) * 0.5f;
+
+        ImDrawList drawList = ImGui.getWindowDrawList();
+        int iconColor = Theme.toColor(Theme.TEXT_PRIMARY, 1);
+        int labelColor = Theme.toColor(Theme.TEXT_SECONDARY, 1);
+
+        ImGui.setWindowFontScale(iconScale);
+        drawList.addText(iconX, topY, iconColor, icon);
+        ImGui.setWindowFontScale(1.0f);
+        drawList.addText(labelX, topY + iconH + gap, labelColor, label);
+
+        return clicked;
     }
 
     private float getDiscountRate() {
