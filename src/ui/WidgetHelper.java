@@ -274,7 +274,7 @@ public class WidgetHelper {
                 ? Theme.toColor(Theme.ACCENT, alpha)
                 : Theme.toColor(Theme.SUCCESS, alpha * 0.85f);
         Theme.drawRoundedRect(dl, btnX, btnY, btnW, btnH, btnColor, 6);
-        Theme.drawTextCentered(dl, "Add to Basket", btnX, btnY, btnW, btnH,
+        Theme.drawTextCentered(dl, "Add", btnX, btnY, btnW, btnH,
                 Theme.toColor(1, 1, 1, alpha));
 
         return clicked;
