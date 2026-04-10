@@ -117,10 +117,15 @@ public class WidgetHelper {
      * Draws a product card for the POS grid.
      * Returns true if "Add to Basket" was clicked.
      */
-    public static boolean productCard(String name, String price, float x, float y,
+    public static boolean productCard(String name, String price,
                                        float w, float h, float animProgress, int index) {
         ImDrawList dl = ImGui.getWindowDrawList();
         boolean clicked = false;
+
+        ImVec2 startPos = new ImVec2();
+        ImGui.getCursorScreenPos(startPos);
+        float x = startPos.x;
+        float y = startPos.y;
 
         float scale = AnimationHelper.easeOutBack(animProgress);
         if (scale <= 0) return false;

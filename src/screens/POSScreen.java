@@ -85,9 +85,6 @@ public class POSScreen {
         float gridH = ImGui.getContentRegionAvailY() - pad;
         ImGui.beginChild("##product_grid", gridW, gridH);
 
-        ImVec2 gridOrigin = new ImVec2();
-        ImGui.getCursorScreenPos(gridOrigin);
-
         float gridAvailW = ImGui.getContentRegionAvailX();
         float cardSpacing = Math.max(8, gridAvailW * 0.02f);
         float cardW = Math.max(120, Math.min(170, (gridAvailW - cardSpacing * 4) / 5));
@@ -96,7 +93,6 @@ public class POSScreen {
 
         String searchStr = searchBuffer.get().toLowerCase().trim();
         int visibleIndex = 0;
-        float scrollY = ImGui.getScrollY();
 
         for (int i = 0; i < SampleData.PRODUCTS.length; i++) {
             String[] product = SampleData.PRODUCTS[i];
@@ -107,14 +103,14 @@ public class POSScreen {
             int col = visibleIndex % cols;
             int row = visibleIndex / cols;
 
-            float screenX = gridOrigin.x + col * (cardW + cardSpacing);
-            float screenY = gridOrigin.y + row * (cardH + cardSpacing) - scrollY;
+            float cardX = col * (cardW + cardSpacing);
+            float cardY = row * (cardH + cardSpacing);
+            ImGui.setCursorPos(cardX, cardY);
 
             float cardAnim = AnimationHelper.staggered(progress, visibleIndex, Math.min(cols * 3, 15), 0.4f);
 
             String priceStr = String.format("P %.2f", Float.parseFloat(product[2]));
-            boolean clicked = WidgetHelper.productCard(product[0], priceStr,
-                    screenX, screenY, cardW, cardH, cardAnim, i);
+            boolean clicked = WidgetHelper.productCard(product[0], priceStr, cardW, cardH, cardAnim, i);
 
             if (clicked) {
                 orderState.addItem(product[0], Float.parseFloat(product[2]));
@@ -125,8 +121,8 @@ public class POSScreen {
 
         if (visibleIndex > 0) {
             int totalRows = (visibleIndex + cols - 1) / cols;
-            ImGui.setCursorScreenPos(gridOrigin.x, gridOrigin.y);
-            ImGui.dummy(gridAvailW, totalRows * (cardH + cardSpacing));
+            ImGui.setCursorPos(0, totalRows * (cardH + cardSpacing));
+            ImGui.dummy(gridAvailW, 1);
         }
 
         ImGui.endChild(); // product_grid
