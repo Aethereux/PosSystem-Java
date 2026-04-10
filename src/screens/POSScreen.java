@@ -2,10 +2,7 @@ package screens;
 
 import data.OrderState;
 import data.SampleData;
-import features.AddItem;
-import features.CommandInvoker;
-import features.Pay;
-import features.RemoveItem;
+import features.*;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
@@ -348,17 +345,19 @@ public class POSScreen {
             float tileH = 140;
 
             if (renderPaymentTile("cash_tile", FontAwesomeData.ICON_FA_MONEY_BILL_WAVE, "Cash", tileW, tileH)) {
-                commandInvoker.setCommand(new Pay(orderState));
+                PaymentContext paymentContext = new PaymentContext();
+                paymentContext.setStrategy(new CashPayment());
+                commandInvoker.setCommand(new Pay(orderState, (PaymentStrategy) paymentContext));
                 commandInvoker.execute();
-                ImGui.closeCurrentPopup();
             }
 
             ImGui.sameLine();
 
             if (renderPaymentTile("gcash_tile", FontAwesomeData.ICON_FA_MOBILE_ALT, "GCash", tileW, tileH)) {
-                commandInvoker.setCommand(new Pay(orderState));
+                PaymentContext paymentContext = new PaymentContext();
+                paymentContext.setStrategy(new GCashPayment());
+                commandInvoker.setCommand(new Pay(orderState, (PaymentStrategy) paymentContext));
                 commandInvoker.execute();
-                ImGui.closeCurrentPopup();
             }
 
             ImGui.spacing();
