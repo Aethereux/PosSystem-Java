@@ -311,16 +311,18 @@ public class POSScreen {
         ImGui.spacing();
 
         ImGui.textColored(Theme.TEXT_MUTED.x, Theme.TEXT_MUTED.y, Theme.TEXT_MUTED.z, 1, "Discount Type");
+        ImGui.columns(2, false);
         ImGui.checkbox("Senior/PWD (20%)", seniorPwdDiscount);
+        ImGui.nextColumn();
         ImGui.checkbox("Promo Code (10%)", promoCodeDiscount);
-        ImGui.checkbox("Bulk Order (5%)", bulkOrderDiscount);
+        ImGui.columns(1);
         ImGui.spacing();
 
         // Buttons — use available width
         ImGui.setCursorPosX(pad);
         float btnAvail = ImGui.getContentRegionAvailX() - pad;
         float btnW = btnAvail;
-        float btnH = 36;
+        float btnH = ImGui.getContentRegionAvailY() - pad;
 
         ImGui.pushStyleVar(ImGuiStyleVar.FrameRounding, 10);
 
