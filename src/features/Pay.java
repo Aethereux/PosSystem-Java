@@ -1,7 +1,8 @@
 package features;
 
 import data.OrderState;
-import data.SampleData;
+import inventory.InventoryItem;
+import inventory.InventoryManager;
 
 public class Pay implements Command {
     private final OrderState orderState;
@@ -20,25 +21,18 @@ public class Pay implements Command {
     }
 
     private void deductInventoryStock() {
+        InventoryManager inv = InventoryManager.getInstance();
+
         for (OrderState.OrderItem orderedItem : orderState.items) {
             int remainingQty = orderedItem.quantity;
 
-            for (String[] inventoryRow : SampleData.INVENTORY) {
-                if (remainingQty <= 0) {
-                    break;
-                }
+            for (InventoryItem invItem : inv.getItems().values()) {
+                if (remainingQty <= 0) break;
+                if (!isMatchingProduct(orderedItem.name, invItem.name)) continue;
+                if (invItem.stock <= 0) continue;
 
-                if (!isMatchingProduct(orderedItem.name, inventoryRow[4])) {
-                    continue;
-                }
-
-                int stock = Integer.parseInt(inventoryRow[6]);
-                if (stock <= 0) {
-                    continue;
-                }
-
-                int deduct = Math.min(stock, remainingQty);
-                inventoryRow[6] = String.valueOf(stock - deduct);
+                int deduct = Math.min(invItem.stock, remainingQty);
+                inv.stockOut(invItem.productId, deduct);
                 remainingQty -= deduct;
             }
         }

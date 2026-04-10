@@ -1,6 +1,8 @@
 package screens;
 
-import data.SampleData;
+import data.AppConfig;
+import inventory.Notification;
+import inventory.NotificationCenter;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
@@ -68,12 +70,12 @@ public class DashboardScreen {
             // Store name
             ImGui.setWindowFontScale(2.5f);
             ImVec2 nameSize = new ImVec2();
-            ImGui.calcTextSize(nameSize, SampleData.STORE_NAME);
+            ImGui.calcTextSize(nameSize, AppConfig.STORE_NAME);
             float nameX = cx + (cw - nameSize.x) / 2;
             float nameY = cy + (ch - nameSize.y) / 2;
             // Text shadow
-            dl.addText(nameX + 2, nameY + 2, Theme.toColor(0, 0, 0, cardAnim * 0.3f), SampleData.STORE_NAME);
-            dl.addText(nameX, nameY, Theme.toColor(1, 1, 1, cardAnim), SampleData.STORE_NAME);
+            dl.addText(nameX + 2, nameY + 2, Theme.toColor(0, 0, 0, cardAnim * 0.3f), AppConfig.STORE_NAME);
+            dl.addText(nameX, nameY, Theme.toColor(1, 1, 1, cardAnim), AppConfig.STORE_NAME);
             ImGui.setWindowFontScale(1.0f);
 
             // Animated shimmer
@@ -132,7 +134,8 @@ public class DashboardScreen {
             ImGui.setWindowFontScale(1.0f);
 
             // Notification count badge
-            String countStr = String.valueOf(SampleData.NOTIFICATIONS.length);
+            java.util.List<Notification> notifications = NotificationCenter.getInstance().getNotifications();
+            String countStr = String.valueOf(notifications.size());
             ImVec2 countSize = new ImVec2();
             ImGui.calcTextSize(countSize, countStr);
             float badgeX = nx + nw - 40;
@@ -144,23 +147,21 @@ public class DashboardScreen {
             float rowH = 36;
             float rowStartY = ny + headerH + 8;
 
-            for (int i = 0; i < SampleData.NOTIFICATIONS.length; i++) {
-                float rowAnim = AnimationHelper.staggered(notifAnim, i, SampleData.NOTIFICATIONS.length, 0.4f);
+            for (int i = 0; i < notifications.size(); i++) {
+                float rowAnim = AnimationHelper.staggered(notifAnim, i, notifications.size(), 0.4f);
                 float ry = rowStartY + i * (rowH + 4);
                 if (ry + rowH > ny + nh - 8) break; // don't overflow
 
-                // Pick row color based on notification type
-                String type = SampleData.NOTIFICATIONS[i][1];
+                Notification notif = notifications.get(i);
                 ImVec4 rowColor;
-                switch (type) {
+                switch (notif.type) {
                     case "Out of stock": rowColor = Theme.NOTIF_OUT_OF_STOCK; break;
-                    case "Near Expiry": rowColor = Theme.NOTIF_NEAR_EXPIRY; break;
-                    case "Dispose stock": rowColor = Theme.NOTIF_DISPOSE; break;
-                    case "Defective stock": rowColor = Theme.NOTIF_DEFECTIVE; break;
+                    case "Near Expiry":  rowColor = Theme.NOTIF_NEAR_EXPIRY;  break;
+                    case "Dispose stock":    rowColor = Theme.NOTIF_DISPOSE;  break;
+                    case "Defective stock":  rowColor = Theme.NOTIF_DEFECTIVE; break;
                     default: rowColor = Theme.NOTIF_LOW_STOCK; break;
                 }
-                WidgetHelper.notificationRow(dl, SampleData.NOTIFICATIONS[i][0],
-                        SampleData.NOTIFICATIONS[i][1], rowColor,
+                WidgetHelper.notificationRow(dl, notif.label, notif.type, rowColor,
                         nx + 8, ry, nw - 16, rowH, rowAnim);
             }
         }

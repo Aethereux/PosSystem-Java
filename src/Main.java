@@ -3,6 +3,8 @@ import imgui.ImGui;
 import imgui.ImGuiIO;
 import imgui.app.Application;
 import imgui.app.Configuration;
+import inventory.InventoryManager;
+import inventory.NotificationCenter;
 import menu.MenuManager;
 import resources.*;
 
@@ -70,6 +72,11 @@ public class Main extends Application {
         config.setTitle("POS Inventory System");
         config.setWidth(1280);
         config.setHeight(720);
+
+        // Bootstrap Observer pattern: register NotificationCenter then scan stock
+        InventoryManager inv = InventoryManager.getInstance();
+        inv.addObserver(NotificationCenter.getInstance());
+        inv.scanAndNotify();
     }
 
     @Override

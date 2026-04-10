@@ -1,6 +1,5 @@
 package screens;
 
-import data.SampleData;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
@@ -12,6 +11,43 @@ import menu.MenuManager;
 import ui.*;
 
 public class SalesScreen {
+
+    private static final String[] CATEGORIES = {
+        "Sneakers", "Levi's Tops", "Levi's Bottoms", "Boots"
+    };
+
+    // {productName, unitsSold, unitPrice, totalSales, costPerUnit, totalCost, profit}
+    private static final String[][][] DATA = {
+        { // Sneakers
+            {"Nike Air Force 1", "120", "4995", "599400", "2800", "336000", "263400"},
+            {"Nike Dunk Low",    "95",  "5495", "522025", "3100", "294500", "227525"},
+            {"Adidas Stan Smith","80",  "4495", "359600", "2500", "200000", "159600"},
+            {"New Balance 574",  "65",  "4295", "279175", "2400", "156000", "123175"},
+            {"Converse Chuck 70","110", "3995", "439450", "2000", "220000", "219450"},
+            {"Jordan 1 Mid",     "45",  "6295", "283275", "3500", "157500", "125775"},
+        },
+        { // Levi's Tops
+            {"Classic Tee",      "200", "1295", "259000", "450",  "90000",  "169000"},
+            {"Batwing Logo Tee", "180", "1495", "269100", "500",  "90000",  "179100"},
+            {"Flannel Shirt",    "75",  "2995", "224625", "1200", "90000",  "134625"},
+            {"Trucker Jacket",   "50",  "4995", "249750", "2200", "110000", "139750"},
+            {"Hoodie Classic",   "90",  "2795", "251550", "1100", "99000",  "152550"},
+        },
+        { // Levi's Bottoms
+            {"501 Original",     "150", "2995", "449250", "1200", "180000", "269250"},
+            {"511 Slim Fit",     "130", "3295", "428350", "1300", "169000", "259350"},
+            {"505 Regular",      "100", "2795", "279500", "1100", "110000", "169500"},
+            {"502 Taper",        "85",  "3495", "297075", "1400", "119000", "178075"},
+            {"Ribcage Wide Leg", "60",  "3995", "239700", "1600", "96000",  "143700"},
+            {"XX Chino",         "70",  "2495", "174650", "1000", "70000",  "104650"},
+        },
+        { // Boots
+            {"Dr. Martens 1460",     "35", "9995",  "349825", "5500", "192500", "157325"},
+            {"Timberland 6-Inch",    "30", "10495", "314850", "5800", "174000", "140850"},
+            {"Chelsea Boot Classic", "45", "5995",  "269775", "3000", "135000", "134775"},
+            {"Levi's Emerson",       "55", "4495",  "247225", "2200", "121000", "126225"},
+        },
+    };
 
     private double enterTime = 0;
     private int selectedCategory = 0;
@@ -49,7 +85,7 @@ public class SalesScreen {
         ImGui.text("Category:");
         ImGui.sameLine();
         ImGui.pushItemWidth(200);
-        if (ImGui.combo("##sales_cat", comboState, SampleData.SALES_CATEGORIES)) {
+        if (ImGui.combo("##sales_cat", comboState, CATEGORIES)) {
             selectedCategory = comboState.get();
             enterTime = ImGui.getTime();
         }
@@ -57,7 +93,7 @@ public class SalesScreen {
         ImGui.spacing();
 
         // Sales data
-        String[][] data = SampleData.SALES_DATA[selectedCategory];
+        String[][] data = DATA[selectedCategory];
 
         // Table
         float availH = ImGui.getContentRegionAvailY();

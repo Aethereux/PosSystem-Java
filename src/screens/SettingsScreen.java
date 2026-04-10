@@ -1,6 +1,6 @@
 package screens;
 
-import data.SampleData;
+import data.AppConfig;
 import imgui.ImGui;
 import imgui.flag.ImGuiTreeNodeFlags;
 import imgui.type.ImBoolean;
@@ -12,7 +12,7 @@ import ui.*;
 public class SettingsScreen {
 
     private double enterTime = 0;
-    private final ImString storeName = new ImString(SampleData.STORE_NAME, 128);
+    private final ImString storeName = new ImString(AppConfig.STORE_NAME, 128);
     private final ImString storeAddress = new ImString("Unit 205, SM Mall, Quezon City", 256);
     private final ImBoolean darkMode = new ImBoolean(true);
     private final ImBoolean notifications = new ImBoolean(true);
@@ -62,7 +62,7 @@ public class SettingsScreen {
             ImGui.popItemWidth();
             ImGui.spacing();
 
-            ImGui.text("Staff: " + SampleData.STAFF_NAME);
+            ImGui.text("Staff: " + AppConfig.STAFF_NAME);
             ImGui.spacing();
             ImGui.spacing();
 

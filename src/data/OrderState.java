@@ -2,10 +2,11 @@ package data;
 
 import java.util.ArrayList;
 import java.util.List;
+// AppConfig is in the same package — no import needed
 
 public class OrderState {
     public int orderNumber = 1;
-    public String staffName = SampleData.STAFF_NAME;
+    public String staffName = AppConfig.STAFF_NAME;
     public int tableNumber = 1;
 
     public List<OrderItem> items = new ArrayList<>();

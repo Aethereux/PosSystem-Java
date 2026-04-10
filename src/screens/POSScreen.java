@@ -1,8 +1,19 @@
 package screens;
 
+import data.AppConfig;
 import data.OrderState;
-import data.SampleData;
-import features.*;
+import features.AddItem;
+import features.CashPayment;
+import features.CommandInvoker;
+import features.DiscountContext;
+import features.GCashPayment;
+import features.Pay;
+import features.PaymentStrategy;
+import features.PromoDiscount;
+import features.RemoveItem;
+import features.SpecialDiscount;
+import inventory.InventoryItem;
+import inventory.InventoryManager;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
@@ -25,14 +36,6 @@ public class POSScreen {
     private final ImBoolean seniorPwdDiscount = new ImBoolean(false);
     private final ImBoolean promoCodeDiscount = new ImBoolean(false);
 
-    {
-        commandInvoker.setCommand(new AddItem(orderState, "Nike Dunk Low Panda", 5495.00f));
-        commandInvoker.execute();
-        commandInvoker.setCommand(new AddItem(orderState, "Levi's 501 Original", 2995.00f));
-        commandInvoker.execute();
-        commandInvoker.setCommand(new AddItem(orderState, "Crew Socks 3-Pack", 595.00f));
-        commandInvoker.execute();
-    }
 
     public void onEnter() {
         enterTime = ImGui.getTime();
@@ -96,7 +99,7 @@ public class POSScreen {
         // Category row
         ImGui.setCursorPosX(pad);
         float catAnim = AnimationHelper.computeProgress(enterTime, 0.8f);
-        selectedCategory = WidgetHelper.categoryRow(SampleData.POS_CAT_NAMES, SampleData.POS_CAT_ICONS,
+        selectedCategory = WidgetHelper.categoryRow(AppConfig.POS_CAT_NAMES, AppConfig.POS_CAT_ICONS,
                 selectedCategory, catAnim);
 
         ImGui.spacing();
@@ -107,7 +110,7 @@ public class POSScreen {
         ImGui.setCursorPosX(pad);
         ImGui.setWindowFontScale(1.3f);
         ImGui.textColored(Theme.TEXT_PRIMARY.x, Theme.TEXT_PRIMARY.y, Theme.TEXT_PRIMARY.z, 1,
-                SampleData.POS_CAT_NAMES[selectedCategory]);
+                AppConfig.POS_CAT_NAMES[selectedCategory]);
         ImGui.setWindowFontScale(1.0f);
         ImGui.spacing();
 
@@ -127,11 +130,9 @@ public class POSScreen {
         String searchStr = searchBuffer.get().toLowerCase().trim();
         int visibleIndex = 0;
 
-        for (int i = 0; i < SampleData.PRODUCTS.length; i++) {
-            String[] product = SampleData.PRODUCTS[i];
-            int catIdx = Integer.parseInt(product[1]);
-            if (catIdx != selectedCategory) continue;
-            if (!searchStr.isEmpty() && !product[0].toLowerCase().contains(searchStr)) continue;
+        for (InventoryItem product : InventoryManager.getInstance().getItems().values()) {
+            if (product.posCategory != selectedCategory) continue;
+            if (!searchStr.isEmpty() && !product.name.toLowerCase().contains(searchStr)) continue;
 
             int col = visibleIndex % cols;
             int row = visibleIndex / cols;
@@ -142,11 +143,11 @@ public class POSScreen {
 
             float cardAnim = AnimationHelper.staggered(progress, visibleIndex, Math.min(cols * 3, 15), 0.4f);
 
-            String priceStr = String.format("P %.2f", Float.parseFloat(product[2]));
-            boolean clicked = WidgetHelper.productCard(product[0], priceStr, cardW, cardH, cardAnim, i);
+            String priceStr = String.format("P %.2f", product.unitPrice);
+            boolean clicked = WidgetHelper.productCard(product.name, priceStr, cardW, cardH, cardAnim, visibleIndex);
 
             if (clicked) {
-                commandInvoker.setCommand(new AddItem(orderState, product[0], Float.parseFloat(product[2])));
+                commandInvoker.setCommand(new AddItem(orderState, product.name, (float) product.unitPrice));
                 commandInvoker.execute();
             }
 
