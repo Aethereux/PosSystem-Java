@@ -23,6 +23,9 @@ import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImBoolean;
 import imgui.type.ImString;
 import menu.MenuManager;
+import receipts.ReceiptInterface;
+import receipts.ReceiptNoteDecorator;
+import receipts.ReceiptPopUp;
 import resources.FontAwesomeData;
 import ui.*;
 
@@ -30,12 +33,13 @@ public class POSScreen {
 
     private double enterTime = 0;
     private int selectedCategory = 0;
+    private String lastPaymentMethod = "";
     private final ImString searchBuffer = new ImString(128);
     private final OrderState orderState = new OrderState();
     private final CommandInvoker commandInvoker = new CommandInvoker();
     private final ImBoolean seniorPwdDiscount = new ImBoolean(false);
     private final ImBoolean promoCodeDiscount = new ImBoolean(false);
-
+    private final ImBoolean openReceiptNextFrame = new ImBoolean(false);
 
     public void onEnter() {
         enterTime = ImGui.getTime();
@@ -199,11 +203,6 @@ public class POSScreen {
         ImGui.sameLine(ImGui.getContentRegionAvailX() - 40);
         ImGui.text(orderState.staffName);
 
-        ImGui.setCursorPosX(pad);
-        ImGui.text("Table No.:");
-        ImGui.sameLine(ImGui.getContentRegionAvailX() - 40);
-        ImGui.text(String.valueOf(orderState.tableNumber));
-
         ImGui.separator();
         ImGui.spacing();
 
@@ -348,6 +347,9 @@ public class POSScreen {
                 PaymentStrategy paymentStrategy = new CashPayment();
                 commandInvoker.setCommand(new Pay(orderState, paymentStrategy));
                 commandInvoker.execute();
+
+                lastPaymentMethod = "Cash";
+                openReceiptNextFrame.set(true);
                 ImGui.closeCurrentPopup();
             }
 
@@ -357,6 +359,9 @@ public class POSScreen {
                 PaymentStrategy paymentStrategy = new GCashPayment();
                 commandInvoker.setCommand(new Pay(orderState, paymentStrategy));
                 commandInvoker.execute();
+
+                lastPaymentMethod = "GCash";
+                openReceiptNextFrame.set(true);
                 ImGui.closeCurrentPopup();
             }
 
@@ -367,6 +372,7 @@ public class POSScreen {
 
             ImGui.endPopup();
         }
+
         ImGui.popStyleColor();
 
         ImGui.popStyleVar(); // FrameRounding
@@ -374,6 +380,58 @@ public class POSScreen {
 
         ImGui.endChild(); // order_panel
         ImGui.popStyleVar(); // ChildRounding
+
+        //receipt popup
+        if (openReceiptNextFrame.get()) {
+            ImGui.openPopup("##receipt_popup");
+            openReceiptNextFrame.set(false);
+        }
+
+        ImGui.setNextWindowSize(420, 520, ImGuiCond.Appearing);
+        ImGui.setNextWindowPos(
+                ImGui.getIO().getDisplaySizeX() * 0.5f,
+                ImGui.getIO().getDisplaySizeY() * 0.5f,
+                ImGuiCond.Appearing,
+                0.5f, 0.5f
+        );
+
+        if (ImGui.beginPopupModal("##receipt_popup",
+                ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse)) {
+
+            float padX = 16f;
+
+            ImGui.beginChild("##receipt_content",
+                    ImGui.getContentRegionAvailX(),
+                    ImGui.getContentRegionAvailY() - 60,
+                    false);
+
+            float discount = calculateDiscountAmount(orderState);
+            ReceiptInterface receipt = new ReceiptNoteDecorator(
+                    new ReceiptPopUp(),
+                    "Thank you for shopping with us!"
+            );
+            receipt.render(orderState, lastPaymentMethod, discount);
+
+            ImGui.endChild(); // receipt_content
+
+            ImGui.spacing();
+            ImGui.setCursorPosX(padX);
+
+            ImGui.pushStyleVar(ImGuiStyleVar.FrameRounding, 10);
+            ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button, Theme.SUCCESS.x, Theme.SUCCESS.y, Theme.SUCCESS.z, 1);
+            ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, Theme.SUCCESS.x, Theme.SUCCESS.y, Theme.SUCCESS.z, 0.85f);
+
+            if (ImGui.button("Done", ImGui.getContentRegionAvailX() - padX, 40)) {
+                orderState.clear();
+                lastPaymentMethod = "";
+                ImGui.closeCurrentPopup();
+            }
+
+            ImGui.popStyleColor(2);
+            ImGui.popStyleVar();
+
+            ImGui.endPopup();
+        }
     }
 
     private boolean renderPaymentTile(String id, String icon, String label, float width, float height) {
@@ -417,7 +475,6 @@ public class POSScreen {
     private float calculateDiscountAmount(OrderState state) {
         DiscountContext discountContext = new DiscountContext();
         float totalDiscount = 0;
-
         if (seniorPwdDiscount.get()) {
             discountContext.setStrategy(new SpecialDiscount());
             totalDiscount += discountContext.executeDiscount(state);
