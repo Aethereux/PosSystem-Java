@@ -306,7 +306,7 @@ public class POSScreen {
 
         ImGui.textColored(Theme.TEXT_MUTED.x, Theme.TEXT_MUTED.y, Theme.TEXT_MUTED.z, 1, "Discount Type");
         ImGui.columns(2, false);
-        ImGui.checkbox("Senior/PWD (20%)", seniorPwdDiscount);
+        ImGui.checkbox("Employee Discount (20%)", seniorPwdDiscount);
         ImGui.nextColumn();
         ImGui.checkbox("Promo Code (10%)", promoCodeDiscount);
         ImGui.columns(1);
@@ -404,14 +404,17 @@ public class POSScreen {
                     false);
 
             float discount = calculateDiscountAmount(orderState);
+            float employeeDiscount = getEmployeeDiscount(orderState);
+            float promoDiscount = getPromoDiscount(orderState);
+
             ReceiptInterface receipt = new ReceiptPopUp();
 
             if (promoCodeDiscount.get()) {
-                receipt = new ReceiptPromoDecorator(receipt, "SUMMERSALE26", true);
+                receipt = new ReceiptPromoDecorator(receipt, "SUMMERSALE26", true, promoDiscount);
             }
 
             if (seniorPwdDiscount.get()) {
-                receipt = new ReceiptEmployeeDiscountDecorator(receipt, true, discount);
+                receipt = new ReceiptEmployeeDiscountDecorator(receipt, true, employeeDiscount);
             }
 
             receipt = new ReceiptNoteDecorator(
@@ -494,5 +497,21 @@ public class POSScreen {
         }
 
         return totalDiscount;
+    }
+
+    private float getEmployeeDiscount(OrderState state) {
+        if (!seniorPwdDiscount.get()) return 0;
+
+        DiscountContext context = new DiscountContext();
+        context.setStrategy(new SpecialDiscount());
+        return context.executeDiscount(state);
+    }
+
+    private float getPromoDiscount(OrderState state) {
+        if (!promoCodeDiscount.get()) return 0;
+
+        DiscountContext context = new DiscountContext();
+        context.setStrategy(new PromoDiscount());
+        return context.executeDiscount(state);
     }
 }

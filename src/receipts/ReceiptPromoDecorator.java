@@ -7,20 +7,20 @@ public class ReceiptPromoDecorator extends ReceiptDecorator {
 
     private final String promoCode;
     private final boolean isApplied;
+    private final float discountAmount;
 
-    public ReceiptPromoDecorator(ReceiptInterface wrappedReceipt, String promoCode, boolean isApplied) {
+    public ReceiptPromoDecorator(ReceiptInterface wrappedReceipt, String promoCode, boolean isApplied, float discountAmount) {
         super(wrappedReceipt);
         this.promoCode = promoCode;
         this.isApplied = isApplied;
+        this.discountAmount = discountAmount;
     }
 
     @Override
-    public void render(OrderState orderState, String paymentMethod, float discountAmount) {
-        super.render(orderState, paymentMethod, discountAmount);
+    public void render(OrderState orderState, String paymentMethod, float discountAmountParam) {
+        super.render(orderState, paymentMethod, discountAmountParam);
 
-        if (!isApplied || promoCode == null || promoCode.isEmpty()) {
-            return;
-        }
+        if (!isApplied || discountAmount <= 0) return;
 
         float padX = 16f;
 

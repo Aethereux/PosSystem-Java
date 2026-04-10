@@ -8,9 +8,7 @@ public class ReceiptEmployeeDiscountDecorator extends ReceiptDecorator {
     private final boolean isApplied;
     private final float discountAmount;
 
-    public ReceiptEmployeeDiscountDecorator(ReceiptInterface wrappedReceipt,
-                                            boolean isApplied,
-                                            float discountAmount) {
+    public ReceiptEmployeeDiscountDecorator(ReceiptInterface wrappedReceipt, boolean isApplied, float discountAmount) {
         super(wrappedReceipt);
         this.isApplied = isApplied;
         this.discountAmount = discountAmount;
