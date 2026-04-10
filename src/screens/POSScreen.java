@@ -219,8 +219,10 @@ public class POSScreen {
 
         // Scrollable items area — only this child scrolls
         float lineH = ImGui.getTextLineHeightWithSpacing();
-        float bottomReserve = lineH * 12 + 120;
-        float itemsH = Math.max(lineH * 2, ImGui.getContentRegionAvailY() - bottomReserve);
+    float footerH = lineH * 12 + 165;
+    float itemsStartY = ImGui.getCursorPosY();
+    float footerY = ImGui.getWindowHeight() - footerH - pad;
+    float itemsH = Math.max(lineH * 2, footerY - itemsStartY);
         float itemsW = ImGui.getContentRegionAvailX();
 
         ImGui.beginChild("##order_items", itemsW, itemsH);
@@ -259,6 +261,11 @@ public class POSScreen {
         }
 
         ImGui.endChild(); // order_items
+
+        // Stick totals, discount options, and payment section to the panel bottom.
+        ImGui.setCursorPosY(footerY);
+        ImGui.beginChild("##order_footer", itemsW, footerH, false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         // Totals
         ImGui.separator();
@@ -319,7 +326,7 @@ public class POSScreen {
         }
         ImGui.popStyleColor(2);
 
-        ImGui.setNextWindowSize(340, 180, ImGuiCond.Appearing);
+        ImGui.setNextWindowSize(480, 290, ImGuiCond.Appearing);
         ImGui.setNextWindowPos(ImGui.getIO().getDisplaySizeX() * 0.5f, ImGui.getIO().getDisplaySizeY() * 0.5f,
             ImGuiCond.Appearing, 0.5f, 0.5f);
         ImGui.pushStyleColor(imgui.flag.ImGuiCol.ModalWindowDimBg, 0, 0, 0, 0.62f);
@@ -328,9 +335,10 @@ public class POSScreen {
                 | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)) {
             ImGui.text("Select payment method");
             ImGui.spacing();
+            ImGui.spacing();
 
             float tileW = (ImGui.getContentRegionAvailX() - 8) / 2;
-            float tileH = 80;
+            float tileH = 140;
 
             if (ImGui.button(FontAwesomeData.ICON_FA_MONEY_BILL_WAVE + "\nCash", tileW, tileH)) {
                 commandInvoker.setCommand(new Pay(orderState));
@@ -356,6 +364,7 @@ public class POSScreen {
         ImGui.popStyleColor();
 
         ImGui.popStyleVar(); // FrameRounding
+        ImGui.endChild(); // order_footer
 
         ImGui.endChild(); // order_panel
         ImGui.popStyleVar(); // ChildRounding
