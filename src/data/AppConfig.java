@@ -6,7 +6,7 @@ public class AppConfig {
 
     // --- Store ---
     public static final String STORE_NAME = "Sole & Stitch";
-    public static final String STAFF_NAME = "Andy";
+    public static final String STAFF_NAME = "aliza lacson";
 
     // --- POS Categories ---
     public static final String[] POS_CAT_NAMES = {
