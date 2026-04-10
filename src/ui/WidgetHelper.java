@@ -116,6 +116,24 @@ public class WidgetHelper {
     }
 
     /**
+     * Truncates text with ".." suffix to fit within maxWidth pixels.
+     */
+    private static String truncateToWidth(String text, float maxWidth) {
+        ImVec2 tmp = new ImVec2();
+        ImGui.calcTextSize(tmp, text);
+        if (tmp.x <= maxWidth) return text;
+
+        int end = text.length();
+        while (end > 0) {
+            String candidate = text.substring(0, end) + "..";
+            ImGui.calcTextSize(tmp, candidate);
+            if (tmp.x <= maxWidth) return candidate;
+            end--;
+        }
+        return "..";
+    }
+
+    /**
      * Draws a product card for the POS grid.
      * Returns true if "Add to Basket" was clicked.
      */
@@ -147,7 +165,7 @@ public class WidgetHelper {
         Theme.drawRoundedRect(dl, cx, cy, cardW, cardH, Theme.toColor(Theme.BG_CARD, alpha), 10);
 
         // Image placeholder area
-        float imgH = cardH * 0.45f;
+        float imgH = cardH * 0.40f;
         float imgPad = 6;
         Theme.drawRoundedRect(dl, cx + imgPad, cy + imgPad, cardW - imgPad * 2, imgH,
                 Theme.toColor(Theme.BG_HOVER, alpha * 0.5f), 8);
@@ -159,19 +177,85 @@ public class WidgetHelper {
                 Theme.toColor(Theme.TEXT_MUTED, alpha * 0.4f));
         ImGui.setWindowFontScale(1.0f);
 
-        // Product name (truncate if too long)
-        String displayName = name.length() > 18 ? name.substring(0, 16) + ".." : name;
-        ImVec2 nameSize = new ImVec2();
-        ImGui.calcTextSize(nameSize, displayName);
-        float nameX = cx + (cardW - nameSize.x) / 2;
-        float nameY = cy + imgH + imgPad + 4;
-        dl.addText(nameX, nameY, Theme.toColor(Theme.TEXT_PRIMARY, alpha), displayName);
+        // Product name — wrap to max 2 lines, ellipsis if overflow
+        float maxNameW = cardW - 12;
+        String line1 = name;
+        String line2 = "";
+        boolean truncated = false;
 
-        // Price
+        ImVec2 measureTmp = new ImVec2();
+        ImGui.calcTextSize(measureTmp, name);
+        if (measureTmp.x > maxNameW) {
+            String[] words = name.split(" ");
+            StringBuilder l1 = new StringBuilder();
+            int idx = 0;
+            for (; idx < words.length; idx++) {
+                String candidate = l1.length() == 0 ? words[idx] : l1 + " " + words[idx];
+                ImGui.calcTextSize(measureTmp, candidate);
+                if (measureTmp.x <= maxNameW) {
+                    l1.setLength(0);
+                    l1.append(candidate);
+                } else {
+                    break;
+                }
+            }
+
+            if (l1.length() == 0) {
+                line1 = truncateToWidth(words[0], maxNameW);
+                truncated = true;
+            } else {
+                line1 = l1.toString();
+                StringBuilder l2 = new StringBuilder();
+                for (; idx < words.length; idx++) {
+                    if (l2.length() > 0) l2.append(" ");
+                    l2.append(words[idx]);
+                }
+                if (l2.length() > 0) {
+                    ImGui.calcTextSize(measureTmp, l2.toString());
+                    if (measureTmp.x <= maxNameW) {
+                        line2 = l2.toString();
+                    } else {
+                        line2 = truncateToWidth(l2.toString(), maxNameW);
+                        truncated = true;
+                    }
+                }
+            }
+        }
+
+        // Draw line 1
+        ImVec2 line1Size = new ImVec2();
+        ImGui.calcTextSize(line1Size, line1);
+        float nameBlockY = cy + imgH + imgPad + 4;
+        float line1X = cx + (cardW - line1Size.x) / 2;
+        dl.addText(line1X, nameBlockY, Theme.toColor(Theme.TEXT_PRIMARY, alpha), line1);
+
+        float lineHeight = line1Size.y;
+
+        // Draw line 2 if present
+        if (!line2.isEmpty()) {
+            ImVec2 line2Size = new ImVec2();
+            ImGui.calcTextSize(line2Size, line2);
+            float line2X = cx + (cardW - line2Size.x) / 2;
+            dl.addText(line2X, nameBlockY + lineHeight + 1,
+                    Theme.toColor(Theme.TEXT_PRIMARY, alpha), line2);
+        }
+
+        // Invisible hover region for tooltip when name was truncated
+        if (truncated) {
+            float hoverW = cardW - 12;
+            float hoverH = lineHeight * 2 + 5;
+            ImGui.setCursorPos(localX + (w - hoverW) / 2, localY + imgH + imgPad + 2);
+            ImGui.invisibleButton("##nameHover_" + index, hoverW, hoverH);
+            if (ImGui.isItemHovered()) {
+                ImGui.setTooltip(name);
+            }
+        }
+
+        // Price — positioned below reserved 2-line name block for consistent layout
         ImVec2 priceSize = new ImVec2();
         ImGui.calcTextSize(priceSize, price);
         float priceX = cx + (cardW - priceSize.x) / 2;
-        float priceY = nameY + nameSize.y + 2;
+        float priceY = nameBlockY + lineHeight * 2 + 3;
         dl.addText(priceX, priceY, Theme.toColor(Theme.TEXT_SECONDARY, alpha), price);
 
         // "Add to Basket" button
