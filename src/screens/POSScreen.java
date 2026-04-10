@@ -2,11 +2,17 @@ package screens;
 
 import data.OrderState;
 import data.SampleData;
+import features.AddItem;
+import features.CommandInvoker;
+import features.Pay;
+import features.RemoveItem;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
+import imgui.flag.ImGuiCond;
 import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiWindowFlags;
+import imgui.type.ImBoolean;
 import imgui.type.ImString;
 import menu.MenuManager;
 import resources.FontAwesomeData;
@@ -18,11 +24,18 @@ public class POSScreen {
     private int selectedCategory = 0;
     private final ImString searchBuffer = new ImString(128);
     private final OrderState orderState = new OrderState();
+    private final CommandInvoker commandInvoker = new CommandInvoker();
+    private final ImBoolean seniorPwdDiscount = new ImBoolean(false);
+    private final ImBoolean promoCodeDiscount = new ImBoolean(false);
+    private final ImBoolean bulkOrderDiscount = new ImBoolean(false);
 
     {
-        orderState.addItem("Nike Dunk Low Panda", 5495.00f);
-        orderState.addItem("Levi's 501 Original", 2995.00f);
-        orderState.addItem("Crew Socks 3-Pack", 595.00f);
+        commandInvoker.setCommand(new AddItem(orderState, "Nike Dunk Low Panda", 5495.00f));
+        commandInvoker.execute();
+        commandInvoker.setCommand(new AddItem(orderState, "Levi's 501 Original", 2995.00f));
+        commandInvoker.execute();
+        commandInvoker.setCommand(new AddItem(orderState, "Crew Socks 3-Pack", 595.00f));
+        commandInvoker.execute();
     }
 
     public void onEnter() {
@@ -137,7 +150,8 @@ public class POSScreen {
             boolean clicked = WidgetHelper.productCard(product[0], priceStr, cardW, cardH, cardAnim, i);
 
             if (clicked) {
-                orderState.addItem(product[0], Float.parseFloat(product[2]));
+                commandInvoker.setCommand(new AddItem(orderState, product[0], Float.parseFloat(product[2])));
+                commandInvoker.execute();
             }
 
             visibleIndex++;
@@ -205,7 +219,7 @@ public class POSScreen {
 
         // Scrollable items area — only this child scrolls
         float lineH = ImGui.getTextLineHeightWithSpacing();
-        float bottomReserve = lineH * 6 + 50;
+        float bottomReserve = lineH * 12 + 120;
         float itemsH = Math.max(lineH * 2, ImGui.getContentRegionAvailY() - bottomReserve);
         float itemsW = ImGui.getContentRegionAvailX();
 
@@ -224,7 +238,8 @@ public class POSScreen {
             ImGui.pushStyleColor(imgui.flag.ImGuiCol.Text, Theme.DANGER.x, Theme.DANGER.y, Theme.DANGER.z, 0.7f);
             ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, 2, 2);
             if (ImGui.smallButton(FontAwesomeData.ICON_FA_TIMES + "##del_" + i)) {
-                orderState.removeItem(i);
+                commandInvoker.setCommand(new RemoveItem(orderState, i));
+                commandInvoker.execute();
             }
             ImGui.popStyleVar();
             ImGui.popStyleColor(4);
@@ -249,8 +264,12 @@ public class POSScreen {
         ImGui.separator();
         ImGui.spacing();
 
-        String[] totalLabels = {"VATable Sales:", "VAT Amount:", "VAT-Exempt:", "VAT-Zero:", "Total Amount:"};
-        float[] totalValues = {orderState.getVatableAmount(), orderState.getVatAmount(), 0, 0, orderState.getTotal()};
+        float subtotal = orderState.getTotal();
+        float discountAmount = subtotal * getDiscountRate();
+        float finalTotal = Math.max(0, subtotal - discountAmount);
+
+        String[] totalLabels = {"VATable Sales:", "VAT Amount:", "VAT-Exempt:", "VAT-Zero:", "Discount:", "Total Amount:"};
+        float[] totalValues = {orderState.getVatableAmount(), orderState.getVatAmount(), 0, 0, discountAmount, finalTotal};
 
         for (int i = 0; i < totalLabels.length; i++) {
             boolean isTotal = i == totalLabels.length - 1;
@@ -266,35 +285,95 @@ public class POSScreen {
             } else {
                 ImGui.textColored(Theme.TEXT_SECONDARY.x, Theme.TEXT_SECONDARY.y, Theme.TEXT_SECONDARY.z, 1, totalLabels[i]);
                 ImGui.sameLine(ImGui.getContentRegionAvailX() - 70);
-                ImGui.text(String.format("%.2f", totalValues[i]));
+                if ("Discount:".equals(totalLabels[i])) {
+                    ImGui.textColored(Theme.SUCCESS.x, Theme.SUCCESS.y, Theme.SUCCESS.z, 1,
+                            String.format("-%.2f", totalValues[i]));
+                } else {
+                    ImGui.text(String.format("%.2f", totalValues[i]));
+                }
             }
         }
 
+        ImGui.spacing();
+        ImGui.separator();
+        ImGui.spacing();
+
+        ImGui.textColored(Theme.TEXT_MUTED.x, Theme.TEXT_MUTED.y, Theme.TEXT_MUTED.z, 1, "Discount Type");
+        ImGui.checkbox("Senior/PWD (20%)", seniorPwdDiscount);
+        ImGui.checkbox("Promo Code (10%)", promoCodeDiscount);
+        ImGui.checkbox("Bulk Order (5%)", bulkOrderDiscount);
         ImGui.spacing();
 
         // Buttons — use available width
         ImGui.setCursorPosX(pad);
         float btnAvail = ImGui.getContentRegionAvailX() - pad;
-        float btnW = (btnAvail - 8) / 2;
+        float btnW = btnAvail;
         float btnH = 36;
 
         ImGui.pushStyleVar(ImGuiStyleVar.FrameRounding, 10);
 
         ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button, Theme.PRIMARY.x, Theme.PRIMARY.y, Theme.PRIMARY.z, 1);
         ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, Theme.PRIMARY_LIGHT.x, Theme.PRIMARY_LIGHT.y, Theme.PRIMARY_LIGHT.z, 1);
-        ImGui.button(FontAwesomeData.ICON_FA_CREDIT_CARD + " Payment", btnW, btnH);
+        if (ImGui.button(FontAwesomeData.ICON_FA_CREDIT_CARD + " Payment", btnW, btnH)) {
+            ImGui.openPopup("##payment_method_popup");
+        }
         ImGui.popStyleColor(2);
 
-        ImGui.sameLine();
+        ImGui.setNextWindowSize(340, 180, ImGuiCond.Appearing);
+        ImGui.setNextWindowPos(ImGui.getIO().getDisplaySizeX() * 0.5f, ImGui.getIO().getDisplaySizeY() * 0.5f,
+            ImGuiCond.Appearing, 0.5f, 0.5f);
+        ImGui.pushStyleColor(imgui.flag.ImGuiCol.ModalWindowDimBg, 0, 0, 0, 0.62f);
+        if (ImGui.beginPopupModal("##payment_method_popup",
+            ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse
+                | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)) {
+            ImGui.text("Select payment method");
+            ImGui.spacing();
 
-        ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button, Theme.BG_CARD.x, Theme.BG_CARD.y, Theme.BG_CARD.z, 1);
-        ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, Theme.BG_HOVER.x, Theme.BG_HOVER.y, Theme.BG_HOVER.z, 1);
-        ImGui.button(FontAwesomeData.ICON_FA_PRINT + " Print", btnW, btnH);
-        ImGui.popStyleColor(2);
+            float tileW = (ImGui.getContentRegionAvailX() - 8) / 2;
+            float tileH = 80;
+
+            if (ImGui.button(FontAwesomeData.ICON_FA_MONEY_BILL_WAVE + "\nCash", tileW, tileH)) {
+                commandInvoker.setCommand(new Pay(orderState));
+                commandInvoker.execute();
+                ImGui.closeCurrentPopup();
+            }
+
+            ImGui.sameLine();
+
+            if (ImGui.button(FontAwesomeData.ICON_FA_MOBILE_ALT + "\nGCash", tileW, tileH)) {
+                commandInvoker.setCommand(new Pay(orderState));
+                commandInvoker.execute();
+                ImGui.closeCurrentPopup();
+            }
+
+            ImGui.spacing();
+            if (ImGui.button("Cancel Transaction", ImGui.getContentRegionAvailX(), 0)) {
+                ImGui.closeCurrentPopup();
+            }
+
+            ImGui.endPopup();
+        }
+        ImGui.popStyleColor();
 
         ImGui.popStyleVar(); // FrameRounding
 
         ImGui.endChild(); // order_panel
         ImGui.popStyleVar(); // ChildRounding
+    }
+
+    private float getDiscountRate() {
+        float rate = 0;
+
+        if (seniorPwdDiscount.get()) {
+            rate += 0.20f;
+        }
+        if (promoCodeDiscount.get()) {
+            rate += 0.10f;
+        }
+        if (bulkOrderDiscount.get()) {
+            rate += 0.05f;
+        }
+
+        return Math.min(rate, 0.60f);
     }
 }
