@@ -40,13 +40,36 @@ public class POSScreen {
         float totalAvailW = ImGui.getContentRegionAvailX();
         float totalAvailH = ImGui.getContentRegionAvailY();
 
-        // Split: product area (left) and order panel (right)
-        float orderPanelW = Math.max(240, totalAvailW * 0.26f);
-        float productAreaW = totalAvailW - orderPanelW;
+        float minProductW = 420;
+        float minOrderW = 260;
+        float panelGap = 8;
+        boolean stackedLayout = totalAvailW < (minProductW + minOrderW + panelGap);
 
-        // === Product Area (child window) — no scroll, grid child handles it ===
+        if (stackedLayout) {
+            float productAreaH = Math.max(220, totalAvailH * 0.58f);
+            float orderPanelH = Math.max(180, totalAvailH - productAreaH - panelGap);
+
+            renderProductArea(totalAvailW, productAreaH, progress);
+            ImGui.spacing();
+            renderOrderPanel(totalAvailW, orderPanelH, progress);
+            return;
+        }
+
+        // Split: product area (left) and order panel (right)
+        float orderPanelW = Math.max(minOrderW, Math.min(totalAvailW * 0.30f, totalAvailW - minProductW));
+        float productAreaW = totalAvailW - orderPanelW - panelGap;
+
+        renderProductArea(productAreaW, totalAvailH, progress);
+
+        // === Order Summary Panel (child window) ===
+        ImGui.sameLine();
+        renderOrderPanel(orderPanelW, totalAvailH, progress);
+    }
+
+    private void renderProductArea(float productAreaW, float productAreaH, float progress) {
+        // Product area child does not scroll; only the grid inside it scrolls.
         int noScroll = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
-        ImGui.beginChild("##pos_products", productAreaW, totalAvailH, false, noScroll);
+        ImGui.beginChild("##pos_products", productAreaW, productAreaH, false, noScroll);
 
         float pad = Math.max(8, productAreaW * 0.02f);
         ImGui.setCursorPos(pad, pad);
@@ -87,9 +110,10 @@ public class POSScreen {
 
         float gridAvailW = ImGui.getContentRegionAvailX();
         float cardSpacing = Math.max(8, gridAvailW * 0.02f);
-        float cardW = Math.max(120, Math.min(170, (gridAvailW - cardSpacing * 4) / 5));
+        float minCardW = 125;
+        int cols = Math.max(1, (int) ((gridAvailW + cardSpacing) / (minCardW + cardSpacing)));
+        float cardW = Math.max(95, (gridAvailW - cardSpacing * (cols - 1)) / cols);
         float cardH = cardW * 1.28f;
-        int cols = Math.max(1, (int) ((gridAvailW + cardSpacing) / (cardW + cardSpacing)));
 
         String searchStr = searchBuffer.get().toLowerCase().trim();
         int visibleIndex = 0;
@@ -127,10 +151,6 @@ public class POSScreen {
 
         ImGui.endChild(); // product_grid
         ImGui.endChild(); // pos_products
-
-        // === Order Summary Panel (child window) ===
-        ImGui.sameLine();
-        renderOrderPanel(orderPanelW, totalAvailH, progress);
     }
 
     private void renderOrderPanel(float w, float h, float progress) {

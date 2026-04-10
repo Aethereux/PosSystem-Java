@@ -41,22 +41,24 @@ public class WidgetHelper {
         buttonW = Math.min(buttonW, 100);
         float buttonH = buttonW * 0.82f;
 
-        ImVec2 cursorScreen = new ImVec2();
-        ImGui.getCursorScreenPos(cursorScreen);
-        float startX = cursorScreen.x;
-        float startY = cursorScreen.y;
+        float startX = ImGui.getCursorPosX();
+        float startY = ImGui.getCursorPosY();
 
         for (int i = 0; i < names.length; i++) {
             float itemAnim = AnimationHelper.staggered(animProgress, i, names.length, 0.5f);
             itemAnim = AnimationHelper.easeOutBack(itemAnim);
             if (itemAnim <= 0) continue;
 
-            float bx = startX + i * (buttonW + spacing);
-            float by = startY + (1 - itemAnim) * 10; // slide down animation
+            float bxLocal = startX + i * (buttonW + spacing);
+            float byLocal = startY + (1 - itemAnim) * 10; // slide down animation
             boolean isActive = (i == selected);
 
             // Invisible button for click
-            ImGui.setCursorScreenPos(bx, by);
+            ImGui.setCursorPos(bxLocal, byLocal);
+            ImVec2 buttonScreenPos = new ImVec2();
+            ImGui.getCursorScreenPos(buttonScreenPos);
+            float bx = buttonScreenPos.x;
+            float by = buttonScreenPos.y;
             ImGui.invisibleButton("##cat_" + i, buttonW, buttonH);
             boolean hovered = ImGui.isItemHovered();
             if (hovered) ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
@@ -107,7 +109,7 @@ public class WidgetHelper {
         }
 
         // Reserve space
-        ImGui.setCursorScreenPos(startX, startY + buttonH + 8);
+        ImGui.setCursorPos(startX, startY + buttonH + 8);
         ImGui.dummy(names.length * (buttonW + spacing), 1);
 
         return newSelected;
@@ -122,6 +124,8 @@ public class WidgetHelper {
         ImDrawList dl = ImGui.getWindowDrawList();
         boolean clicked = false;
 
+        float localX = ImGui.getCursorPosX();
+        float localY = ImGui.getCursorPosY();
         ImVec2 startPos = new ImVec2();
         ImGui.getCursorScreenPos(startPos);
         float x = startPos.x;
@@ -176,7 +180,7 @@ public class WidgetHelper {
         float btnX = cx + 8;
         float btnY = cy + cardH - btnH - 8;
 
-        ImGui.setCursorScreenPos(btnX, btnY);
+        ImGui.setCursorPos(localX + 8, localY + cardH - btnH - 8);
         ImGui.invisibleButton("##addBtn_" + index, btnW, btnH);
         boolean btnHovered = ImGui.isItemHovered();
         if (btnHovered) ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
