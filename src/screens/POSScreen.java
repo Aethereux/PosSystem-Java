@@ -5,7 +5,6 @@ import data.SampleData;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
-import imgui.flag.ImGuiMouseCursor;
 import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImString;
@@ -177,33 +176,6 @@ public class POSScreen {
         ImGui.text("Table No.:");
         ImGui.sameLine(ImGui.getContentRegionAvailX() - 40);
         ImGui.text(String.valueOf(orderState.tableNumber));
-
-        ImGui.spacing();
-
-        // Order type toggle
-        ImGui.setCursorPosX(pad);
-        String[] types = {"Dine In", "To Go", "Delivery"};
-        float toggleW = ImGui.getContentRegionAvailX() - pad;
-        float typeW = toggleW / 3;
-        ImVec2 toggleStart = new ImVec2();
-        ImGui.getCursorScreenPos(toggleStart);
-
-        for (int i = 0; i < 3; i++) {
-            float tx = toggleStart.x + i * typeW;
-            boolean active = orderState.orderType == i;
-
-            ImGui.setCursorScreenPos(tx, toggleStart.y);
-            ImGui.invisibleButton("##orderType_" + i, typeW, 28);
-            if (ImGui.isItemHovered()) ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
-            if (ImGui.isItemClicked()) orderState.orderType = i;
-
-            int bgColor = active ? Theme.toColor(Theme.PRIMARY) : Theme.toColor(Theme.BG_CARD);
-            Theme.drawRoundedRect(dl, tx + 1, toggleStart.y, typeW - 2, 28, bgColor, 8);
-            Theme.drawTextCentered(dl, types[i], tx, toggleStart.y, typeW, 28,
-                    Theme.toColor(active ? Theme.TEXT_PRIMARY : Theme.TEXT_SECONDARY));
-        }
-        ImGui.setCursorScreenPos(toggleStart.x, toggleStart.y + 34);
-        ImGui.dummy(toggleW, 1);
 
         ImGui.separator();
         ImGui.spacing();

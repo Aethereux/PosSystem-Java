@@ -7,7 +7,6 @@ public class OrderState {
     public int orderNumber = 1;
     public String staffName = SampleData.STAFF_NAME;
     public int tableNumber = 1;
-    public int orderType = 0; // 0=Dine In, 1=To Go, 2=Delivery
 
     public List<OrderItem> items = new ArrayList<>();
 
@@ -84,6 +83,5 @@ public class OrderState {
         items.clear();
         orderNumber++;
         tableNumber = 1;
-        orderType = 0;
     }
 }
