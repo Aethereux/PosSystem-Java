@@ -7,8 +7,6 @@ import java.util.List;
 public class OrderState {
     public int orderNumber = 1;
     public String staffName = AppConfig.STAFF_NAME;
-    public int tableNumber = 1;
-
     public List<OrderItem> items = new ArrayList<>();
 
     public static class OrderItem {
@@ -83,6 +81,5 @@ public class OrderState {
     public void clear() {
         items.clear();
         orderNumber++;
-        tableNumber = 1;
     }
 }

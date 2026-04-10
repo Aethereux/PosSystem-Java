@@ -199,11 +199,6 @@ public class POSScreen {
         ImGui.sameLine(ImGui.getContentRegionAvailX() - 40);
         ImGui.text(orderState.staffName);
 
-        ImGui.setCursorPosX(pad);
-        ImGui.text("Table No.:");
-        ImGui.sameLine(ImGui.getContentRegionAvailX() - 40);
-        ImGui.text(String.valueOf(orderState.tableNumber));
-
         ImGui.separator();
         ImGui.spacing();
 
