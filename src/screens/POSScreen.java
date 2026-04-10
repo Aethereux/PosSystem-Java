@@ -23,9 +23,7 @@ import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImBoolean;
 import imgui.type.ImString;
 import menu.MenuManager;
-import receipts.ReceiptInterface;
-import receipts.ReceiptNoteDecorator;
-import receipts.ReceiptPopUp;
+import receipts.*;
 import resources.FontAwesomeData;
 import ui.*;
 
@@ -406,10 +404,21 @@ public class POSScreen {
                     false);
 
             float discount = calculateDiscountAmount(orderState);
-            ReceiptInterface receipt = new ReceiptNoteDecorator(
-                    new ReceiptPopUp(),
+            ReceiptInterface receipt = new ReceiptPopUp();
+
+            if (promoCodeDiscount.get()) {
+                receipt = new ReceiptPromoDecorator(receipt, "SUMMERSALE26", true);
+            }
+
+            if (seniorPwdDiscount.get()) {
+                receipt = new ReceiptEmployeeDiscountDecorator(receipt, true, discount);
+            }
+
+            receipt = new ReceiptNoteDecorator(
+                    receipt,
                     "Thank you for shopping with us!"
             );
+
             receipt.render(orderState, lastPaymentMethod, discount);
 
             ImGui.endChild(); // receipt_content
