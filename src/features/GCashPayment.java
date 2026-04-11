@@ -11,6 +11,7 @@ public class GCashPayment implements PaymentStrategy {
 
     @Override
     public void pay(OrderState amount) {
-
+        System.out.printf("[GCashPayment] Order #%04d — Total: %.2f%n",
+                amount.orderNumber, amount.getTotal());
     }
 }

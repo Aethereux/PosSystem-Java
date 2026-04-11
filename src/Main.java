@@ -22,17 +22,17 @@ public class Main extends Application {
         super.initImGui(config);
         ImGuiIO io = ImGui.getIO();
 
-        // PRIMARY FONT
-        // We MUST create a fresh config even for the first font to avoid NullPointerException
+
+
         ImFontConfig zenlessConfig = new ImFontConfig();
-        // No MergeMode here because it's the first font
-        // Load at high resolution (42pt) for crisp rendering, then scale down globally
+
+
         float hiResSize = 42.0f;
         float targetSize = 18.0f;
         loadFontResource(io, "/resources/Font.bin", hiResSize, zenlessConfig, null, true);
         zenlessConfig.destroy();
 
-        // SECONDARY FONT (FontAwesome) — also at high resolution
+
         ImFontConfig faConfig = new ImFontConfig();
         faConfig.setMergeMode(true);
         faConfig.setPixelSnapH(true);
@@ -41,7 +41,7 @@ public class Main extends Application {
         short[] faRanges = new short[]{ FontAwesomeData.ICON_MIN_FA, FontAwesomeData.ICON_MAX_FA, 0 };
         loadFontResource(io, "/resources/font_awesome.bin", hiResSize, faConfig, faRanges, false);
 
-        // Build and set global scale so default text renders at targetSize
+
         io.getFonts().build();
         io.setFontGlobalScale(targetSize / hiResSize);
         faConfig.destroy();
@@ -73,7 +73,7 @@ public class Main extends Application {
         config.setWidth(1280);
         config.setHeight(720);
 
-        // Bootstrap Observer pattern: register NotificationCenter then scan stock
+
         InventoryManager inv = InventoryManager.getInstance();
         inv.addObserver(NotificationCenter.getInstance());
         inv.scanAndNotify();

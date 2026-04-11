@@ -5,16 +5,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Concrete Observer — listens to InventoryManager events and maintains
- * the live list of active alerts shown on the Dashboard.
- */
+
 public class NotificationCenter implements InventoryObserver {
 
     private static NotificationCenter instance;
 
-    // Keyed by productId so each item has at most one active notification
+
     private final Map<String, Notification> active = new LinkedHashMap<>();
+    private boolean enabled = true;
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+        if (!enabled) active.clear();
+    }
+
+    public boolean isEnabled() { return enabled; }
 
     public static NotificationCenter getInstance() {
         if (instance == null) {
@@ -25,6 +30,7 @@ public class NotificationCenter implements InventoryObserver {
 
     @Override
     public void onLowStock(InventoryItem item) {
+        if (!enabled) return;
         active.put(item.productId,
                 new Notification(item.productId,
                         item.productId + " - " + item.name,
@@ -34,6 +40,7 @@ public class NotificationCenter implements InventoryObserver {
 
     @Override
     public void onOutOfStock(InventoryItem item) {
+        if (!enabled) return;
         active.put(item.productId,
                 new Notification(item.productId,
                         item.productId + " - " + item.name,

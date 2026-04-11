@@ -2,7 +2,7 @@ package data;
 
 import java.util.ArrayList;
 import java.util.List;
-// AppConfig is in the same package — no import needed
+
 
 public class OrderState {
     public int orderNumber = 1;

@@ -2,6 +2,8 @@ package screens;
 
 import data.AppConfig;
 import data.OrderState;
+import data.SalesManager;
+import data.SalesRecord;
 import features.AddItem;
 import features.CashPayment;
 import features.CommandInvoker;
@@ -46,10 +48,10 @@ public class POSScreen {
     public void render() {
         float progress = AnimationHelper.computeProgress(enterTime, 0.6f);
 
-        // Sidebar
+
         Sidebar.render(MenuManager.SCREEN_POS);
 
-        // Remaining area after sidebar
+
         ImGui.sameLine();
         float totalAvailW = ImGui.getContentRegionAvailX();
         float totalAvailH = ImGui.getContentRegionAvailY();
@@ -69,54 +71,60 @@ public class POSScreen {
             return;
         }
 
-        // Split: product area (left) and order panel (right)
+
         float orderPanelW = Math.max(minOrderW, Math.min(totalAvailW * 0.30f, totalAvailW - minProductW));
         float productAreaW = totalAvailW - orderPanelW - panelGap;
 
         renderProductArea(productAreaW, totalAvailH, progress);
 
-        // === Order Summary Panel (child window) ===
+
         ImGui.sameLine();
         renderOrderPanel(orderPanelW, totalAvailH, progress);
     }
 
     private void renderProductArea(float productAreaW, float productAreaH, float progress) {
-        // Product area child does not scroll; only the grid inside it scrolls.
+
         int noScroll = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
         ImGui.beginChild("##pos_products", productAreaW, productAreaH, false, noScroll);
 
         float pad = Math.max(8, productAreaW * 0.02f);
         ImGui.setCursorPos(pad, pad);
 
-        // Search bar
+
         float searchW = ImGui.getContentRegionAvailX() - pad;
         WidgetHelper.searchBar("##pos_search", searchBuffer, searchW);
         ImGui.spacing();
 
-        // Category label
+
         ImGui.setCursorPosX(pad);
         ImGui.textColored(Theme.TEXT_SECONDARY.x, Theme.TEXT_SECONDARY.y, Theme.TEXT_SECONDARY.z, 1, "Category");
         ImGui.spacing();
 
-        // Category row
+
+        String[] posCatNames = new String[AppConfig.POS_CAT_NAMES.length + 1];
+        String[] posCatIcons = new String[AppConfig.POS_CAT_ICONS.length + 1];
+        posCatNames[0] = "All";
+        posCatIcons[0] = resources.FontAwesomeData.ICON_FA_LIST;
+        System.arraycopy(AppConfig.POS_CAT_NAMES, 0, posCatNames, 1, AppConfig.POS_CAT_NAMES.length);
+        System.arraycopy(AppConfig.POS_CAT_ICONS, 0, posCatIcons, 1, AppConfig.POS_CAT_ICONS.length);
+
         ImGui.setCursorPosX(pad);
         float catAnim = AnimationHelper.computeProgress(enterTime, 0.8f);
-        selectedCategory = WidgetHelper.categoryRow(AppConfig.POS_CAT_NAMES, AppConfig.POS_CAT_ICONS,
-                selectedCategory, catAnim);
+        selectedCategory = WidgetHelper.categoryRow(posCatNames, posCatIcons, selectedCategory, catAnim);
 
         ImGui.spacing();
         ImGui.separator();
         ImGui.spacing();
 
-        // Category title
+
+        String catTitle = selectedCategory == 0 ? "All" : AppConfig.POS_CAT_NAMES[selectedCategory - 1];
         ImGui.setCursorPosX(pad);
         ImGui.setWindowFontScale(1.3f);
-        ImGui.textColored(Theme.TEXT_PRIMARY.x, Theme.TEXT_PRIMARY.y, Theme.TEXT_PRIMARY.z, 1,
-                AppConfig.POS_CAT_NAMES[selectedCategory]);
+        ImGui.textColored(Theme.TEXT_PRIMARY.x, Theme.TEXT_PRIMARY.y, Theme.TEXT_PRIMARY.z, 1, catTitle);
         ImGui.setWindowFontScale(1.0f);
         ImGui.spacing();
 
-        // Product grid (scrollable child — this one SHOULD scroll)
+
         ImGui.setCursorPosX(pad);
         float gridW = ImGui.getContentRegionAvailX() - pad;
         float gridH = ImGui.getContentRegionAvailY() - pad;
@@ -133,7 +141,8 @@ public class POSScreen {
         int visibleIndex = 0;
 
         for (InventoryItem product : InventoryManager.getInstance().getItems().values()) {
-            if (product.posCategory != selectedCategory) continue;
+            if (product.posCategory < 0) continue;
+            if (selectedCategory > 0 && product.posCategory != selectedCategory - 1) continue;
             if (!searchStr.isEmpty() && !product.name.toLowerCase().contains(searchStr)) continue;
 
             int col = visibleIndex % cols;
@@ -145,10 +154,14 @@ public class POSScreen {
 
             float cardAnim = AnimationHelper.staggered(progress, visibleIndex, Math.min(cols * 3, 15), 0.4f);
 
-            String priceStr = String.format("P %.2f", product.unitPrice);
+            int cartQty = getCartQty(product.name);
+            boolean outOfStock = product.stock <= 0 || cartQty >= product.stock;
+            String priceStr = outOfStock
+                    ? "Out of Stock"
+                    : String.format("P %.2f", product.unitPrice);
             boolean clicked = WidgetHelper.productCard(product.name, priceStr, cardW, cardH, cardAnim, visibleIndex);
 
-            if (clicked) {
+            if (clicked && !outOfStock) {
                 commandInvoker.setCommand(new AddItem(orderState, product.name, (float) product.unitPrice));
                 commandInvoker.execute();
             }
@@ -162,8 +175,8 @@ public class POSScreen {
             ImGui.dummy(gridAvailW, 1);
         }
 
-        ImGui.endChild(); // product_grid
-        ImGui.endChild(); // pos_products
+        ImGui.endChild();
+        ImGui.endChild();
     }
 
     private void renderOrderPanel(float w, float h, float progress) {
@@ -183,35 +196,59 @@ public class POSScreen {
         float pad = Math.max(8, ImGui.getContentRegionAvailX() * 0.05f);
         ImGui.setCursorPos(pad, pad);
 
-        // Title
-        ImGui.setWindowFontScale(1.3f);
+
+        ImGui.setWindowFontScale(1.2f);
         ImGui.setCursorPosX((ImGui.getWindowWidth() - ImGui.calcTextSizeX("Order Summary")) / 2);
         ImGui.textColored(Theme.TEXT_PRIMARY.x, Theme.TEXT_PRIMARY.y, Theme.TEXT_PRIMARY.z, 1, "Order Summary");
         ImGui.setWindowFontScale(1.0f);
         ImGui.spacing();
 
-        // Order info — use getContentRegionAvailX for right-align
+
+        String orderNoStr = String.format("#%04d", orderState.orderNumber);
+        ImGui.setWindowFontScale(0.94f);
         ImGui.setCursorPosX(pad);
         ImGui.text("Order No.:");
-        ImGui.sameLine(ImGui.getContentRegionAvailX() - 40);
-        ImGui.text(String.format("#%04d", orderState.orderNumber));
+        ImGui.sameLine(ImGui.getContentRegionAvailX() - ImGui.calcTextSizeX(orderNoStr) - pad);
+        ImGui.text(orderNoStr);
 
+
+        float availForName = ImGui.getContentRegionAvailX() - ImGui.calcTextSizeX("Staff name:") - pad * 3;
+        String staffDisplay = orderState.staffName;
+        while (staffDisplay.length() > 1 && ImGui.calcTextSizeX(staffDisplay) > availForName) {
+            staffDisplay = staffDisplay.substring(0, staffDisplay.length() - 1);
+        }
+        if (!staffDisplay.equals(orderState.staffName)) staffDisplay += "…";
         ImGui.setCursorPosX(pad);
         ImGui.text("Staff name:");
-        ImGui.sameLine(ImGui.getContentRegionAvailX() - 40);
-        ImGui.text(orderState.staffName);
+        ImGui.sameLine(ImGui.getContentRegionAvailX() - ImGui.calcTextSizeX(staffDisplay) - pad);
+        ImGui.text(staffDisplay);
+        ImGui.setWindowFontScale(1.0f);
 
         ImGui.separator();
         ImGui.spacing();
 
-        // Items header
+
+    // Keep these widths fixed so Qty/Price stay aligned on narrow panels.
+        final float deleteColW = 18f;
+        final float qtyClusterW = 58f;
+        final float priceColW = 74f;
+        final float colGap = 8f;
+
+        float headerAvail = ImGui.getContentRegionAvailX();
+        float qtyX = headerAvail - deleteColW - priceColW - qtyClusterW - (colGap * 2);
+        float priceX = headerAvail - deleteColW - priceColW - colGap;
+
+        ImGui.setWindowFontScale(0.93f);
         ImGui.setCursorPosX(pad);
         ImGui.textColored(Theme.TEXT_MUTED.x, Theme.TEXT_MUTED.y, Theme.TEXT_MUTED.z, 1, "Item Name");
-        ImGui.sameLine(ImGui.getContentRegionAvailX() - 60);
-        ImGui.textColored(Theme.TEXT_MUTED.x, Theme.TEXT_MUTED.y, Theme.TEXT_MUTED.z, 1, "Qty   Price");
+        ImGui.sameLine(qtyX);
+        ImGui.textColored(Theme.TEXT_MUTED.x, Theme.TEXT_MUTED.y, Theme.TEXT_MUTED.z, 1, "Qty");
+        ImGui.sameLine(priceX);
+        ImGui.textColored(Theme.TEXT_MUTED.x, Theme.TEXT_MUTED.y, Theme.TEXT_MUTED.z, 1, "Price");
+        ImGui.setWindowFontScale(1.0f);
         ImGui.spacing();
 
-        // Scrollable items area — only this child scrolls
+
         float lineH = ImGui.getTextLineHeightWithSpacing();
         float itemsStartY = ImGui.getCursorPosY();
         float availableBodyH = ImGui.getWindowHeight() - itemsStartY - pad;
@@ -230,9 +267,41 @@ public class POSScreen {
             OrderState.OrderItem item = orderState.items.get(i);
             float rowAvail = ImGui.getContentRegionAvailX();
 
-            // Name + delete
-            ImGui.text(item.name.length() > 24 ? item.name.substring(0, 22) + ".." : item.name);
-            ImGui.sameLine(rowAvail - 20);
+            float rowQtyX = rowAvail - deleteColW - priceColW - qtyClusterW - (colGap * 2);
+            float rowPriceX = rowAvail - deleteColW - priceColW - colGap;
+            float rowDeleteX = rowAvail - deleteColW;
+            float nameMaxW = Math.max(0, rowQtyX - colGap);
+
+            String nameText = truncateToWidth(item.name, nameMaxW);
+            ImGui.setWindowFontScale(0.9f);
+            ImGui.alignTextToFramePadding();
+            ImGui.text(nameText);
+
+
+            ImGui.sameLine(rowQtyX);
+            ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, 2, 2);
+            if (ImGui.smallButton("-##minus_" + i)) {
+                orderState.decrementQty(i);
+            }
+            ImGui.sameLine();
+            ImGui.text("x" + item.quantity);
+            ImGui.sameLine();
+            if (ImGui.smallButton("+##plus_" + i)) {
+                InventoryItem inv = findInventoryItem(item.name);
+                if (inv == null || item.quantity < inv.stock) orderState.incrementQty(i);
+            }
+            ImGui.popStyleVar();
+
+
+            String lineTotal = String.format("%.2f", item.getLineTotal());
+            float priceW = ImGui.calcTextSizeX(lineTotal);
+            ImGui.sameLine(rowPriceX + Math.max(0, priceColW - priceW));
+            ImGui.alignTextToFramePadding();
+            ImGui.text(lineTotal);
+            ImGui.setWindowFontScale(1.0f);
+
+
+            ImGui.sameLine(rowDeleteX);
             ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button, 0, 0, 0, 0);
             ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, Theme.DANGER.x, Theme.DANGER.y, Theme.DANGER.z, 0.2f);
             ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonActive, Theme.DANGER.x, Theme.DANGER.y, Theme.DANGER.z, 0.4f);
@@ -245,28 +314,19 @@ public class POSScreen {
             ImGui.popStyleVar();
             ImGui.popStyleColor(4);
 
-            // Qty controls + price
-            if (ImGui.smallButton("-##minus_" + i)) orderState.decrementQty(i);
-            ImGui.sameLine();
-            ImGui.text(String.valueOf(item.quantity));
-            ImGui.sameLine();
-            if (ImGui.smallButton("+##plus_" + i)) orderState.incrementQty(i);
-            ImGui.sameLine(rowAvail - 70);
-            ImGui.text(String.format("%.2f", item.getLineTotal()));
-
             ImGui.spacing();
             ImGui.separator();
             ImGui.spacing();
         }
 
-        ImGui.endChild(); // order_items
+        ImGui.endChild();
 
-        // Stick totals, discount options, and payment section to the panel bottom.
+
         ImGui.setCursorPosY(footerY);
         ImGui.beginChild("##order_footer", itemsW, footerH, false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        // Totals
+
         ImGui.separator();
         ImGui.spacing();
 
@@ -312,7 +372,7 @@ public class POSScreen {
         ImGui.columns(1);
         ImGui.spacing();
 
-        // Buttons — use available width
+
         ImGui.setCursorPosX(pad);
         float btnAvail = ImGui.getContentRegionAvailX() - pad;
         float btnW = btnAvail;
@@ -345,7 +405,7 @@ public class POSScreen {
                 PaymentStrategy paymentStrategy = new CashPayment();
                 commandInvoker.setCommand(new Pay(orderState, paymentStrategy));
                 commandInvoker.execute();
-
+                recordSale("Cash");
                 lastPaymentMethod = "Cash";
                 openReceiptNextFrame.set(true);
                 ImGui.closeCurrentPopup();
@@ -357,7 +417,7 @@ public class POSScreen {
                 PaymentStrategy paymentStrategy = new GCashPayment();
                 commandInvoker.setCommand(new Pay(orderState, paymentStrategy));
                 commandInvoker.execute();
-
+                recordSale("GCash");
                 lastPaymentMethod = "GCash";
                 openReceiptNextFrame.set(true);
                 ImGui.closeCurrentPopup();
@@ -373,13 +433,13 @@ public class POSScreen {
 
         ImGui.popStyleColor();
 
-        ImGui.popStyleVar(); // FrameRounding
-        ImGui.endChild(); // order_footer
+        ImGui.popStyleVar();
+        ImGui.endChild();
 
-        ImGui.endChild(); // order_panel
-        ImGui.popStyleVar(); // ChildRounding
+        ImGui.endChild();
+        ImGui.popStyleVar();
 
-        //receipt popup
+
         if (openReceiptNextFrame.get()) {
             ImGui.openPopup("##receipt_popup");
             openReceiptNextFrame.set(false);
@@ -424,7 +484,7 @@ public class POSScreen {
 
             receipt.render(orderState, lastPaymentMethod, discount);
 
-            ImGui.endChild(); // receipt_content
+            ImGui.endChild();
 
             ImGui.spacing();
             ImGui.setCursorPosX(padX);
@@ -482,6 +542,47 @@ public class POSScreen {
         drawList.addText(labelX, topY + iconH + gap, labelColor, label);
 
         return clicked;
+    }
+
+    private int getCartQty(String productName) {
+        for (OrderState.OrderItem item : orderState.items) {
+            if (item.name.equals(productName)) return item.quantity;
+        }
+        return 0;
+    }
+
+    private String truncateToWidth(String text, float maxWidth) {
+        if (maxWidth <= 0) return "";
+        if (ImGui.calcTextSizeX(text) <= maxWidth) return text;
+        String clipped = text;
+        while (clipped.length() > 1) {
+            clipped = clipped.substring(0, clipped.length() - 1);
+            String candidate = clipped + "...";
+            if (ImGui.calcTextSizeX(candidate) <= maxWidth) return candidate;
+        }
+        return "...";
+    }
+
+    private InventoryItem findInventoryItem(String productName) {
+        for (InventoryItem item : InventoryManager.getInstance().getItems().values()) {
+            if (item.name.equals(productName)) return item;
+        }
+        return null;
+    }
+
+    private void recordSale(String paymentMethod) {
+        String dateTime = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        float discount = calculateDiscountAmount(orderState);
+        SalesManager.getInstance().addRecord(new SalesRecord(
+                orderState.orderNumber,
+                orderState.staffName,
+                dateTime,
+                paymentMethod,
+                orderState.items,
+                orderState.getTotal(),
+                discount
+        ));
     }
 
     private float calculateDiscountAmount(OrderState state) {

@@ -5,15 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Singleton Subject — owns all inventory state and fires Observer events
- * when stock crosses low-stock or out-of-stock thresholds.
- *
- * Inventory categories : 0=Sneakers  1=Boots  2=Tops  3=Jeans  4=Jackets
- *                        5=Accessories  6=Socks  7=Packaging  8=Others
- * POS categories       : -1=not in POS  0=New Arrivals  1=Sneakers  2=Boots
- *                        3=Levi's Tops  4=Levi's Bottoms  5=Accessories  6=Sale
- */
+
 public class InventoryManager {
 
     private static InventoryManager instance;
@@ -34,8 +26,8 @@ public class InventoryManager {
         return instance;
     }
 
-    // Seed data — typed objects, no string parsing.
-    // Add more items at runtime through the Inventory screen.
+
+
     private void loadDefaults() {
         seed("SN-001", "Nike Air Force 1 '07 (US 8)",  4995, 12, 0, "2026-01-15", "N/A",  1);
         seed("BT-001", "Dr. Martens 1460 (US 8)",       9995,  4, 1, "2025-11-01", "N/A",  2);
@@ -64,7 +56,7 @@ public class InventoryManager {
 
     public void removeItem(String productId) {
         InventoryItem item = items.remove(productId);
-        // Clear any active notification for this item
+
         if (item != null) fireStockRestored(item);
     }
 
@@ -96,10 +88,6 @@ public class InventoryManager {
         observers.remove(observer);
     }
 
-    /**
-     * Scans all items on startup and fires events for anything already at or
-     * below threshold so the dashboard is populated immediately.
-     */
     public void scanAndNotify() {
         for (InventoryItem item : items.values()) {
             if (item.stock <= 0) {

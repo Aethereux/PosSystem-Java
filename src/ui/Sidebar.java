@@ -45,15 +45,15 @@ public class Sidebar {
         ImFont font = ImGui.getFont();
         float globalScale = ImGui.getIO().getFontGlobalScale();
         float effectiveFontSize = font.getFontSize() * globalScale;
-        // For dl.addText(font, size, ...) we pass raw pixel size (not scaled by globalScale)
-        // So we compute from effectiveFontSize / globalScale? No — dl.addText ignores globalScale,
-        // so we must pass the actual pixel size we want on screen.
-        // effectiveFontSize = what normal text looks like. We want labels smaller, icons bigger.
+
+
+
+
         int smallFontSize = (int)(effectiveFontSize * 0.7f);
         int iconFontSize = (int)(effectiveFontSize * 1.2f);
         int homeIconSize = (int)(effectiveFontSize * 1.3f);
 
-        // Render sidebar in its own child window to isolate layout
+
         ImGui.setCursorPos(0, 0);
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, 0, 0);
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, 0, 0);
@@ -66,17 +66,17 @@ public class Sidebar {
         float x = childPos.x;
         float y = childPos.y;
 
-        // Sidebar background
+
         Theme.drawRoundedRect(dl, x, y, WIDTH, h, Theme.toColor(Theme.SIDEBAR_BG), 0);
 
-        // Right border
+
         dl.addRectFilled(x + WIDTH - 1, y, x + WIDTH, y + h, Theme.toColor(Theme.BG_HOVER, 0.3f));
 
         float pad = WIDTH * 0.12f;
         float btnSize = WIDTH - pad * 2;
         float btnX = x + pad;
 
-        // Home button
+
         float homeY = y + pad;
         ImGui.setCursorScreenPos(btnX, homeY);
         ImGui.invisibleButton("##sidebar_home", btnSize, btnSize);
@@ -92,7 +92,7 @@ public class Sidebar {
         Theme.drawRoundedRect(dl, btnX, homeY, btnSize, btnSize,
                 Theme.toColor(Theme.BG_HOVER, homeHoverAnim * 0.8f), 12);
 
-        // Home icon
+
         ImVec2 iconSize = new ImVec2();
         font.calcTextSizeA(iconSize, homeIconSize, Float.MAX_VALUE, -1, FontAwesomeData.ICON_FA_HOME);
         dl.addText(font, homeIconSize,
@@ -100,11 +100,11 @@ public class Sidebar {
                 Theme.toColor(Theme.TEXT_PRIMARY, 0.6f + homeHoverAnim * 0.4f),
                 FontAwesomeData.ICON_FA_HOME);
 
-        // Separator
+
         float sepY = homeY + btnSize + pad;
         dl.addLine(x + pad, sepY, x + WIDTH - pad, sepY, Theme.toColor(Theme.BG_HOVER, 0.5f), 1);
 
-        // Nav items
+
         float navStartY = sepY + pad;
         float availH = h - (navStartY - y) - pad;
         float itemSpacing = 6;
@@ -125,7 +125,7 @@ public class Sidebar {
             float target = (hovered || isActive) ? 1.0f : 0.0f;
             hoverAnim[i] += (target - hoverAnim[i]) * 0.15f;
 
-            // Active indicator
+
             if (isActive || hoverAnim[i] > 0.05f) {
                 float barH = itemHeight * 0.45f * hoverAnim[i];
                 float barY = itemY + (itemHeight - barH) / 2;
@@ -133,11 +133,11 @@ public class Sidebar {
                         Theme.toColor(Theme.PRIMARY, hoverAnim[i]), 2);
             }
 
-            // Background
+
             Theme.drawRoundedRect(dl, btnX, itemY, btnSize, itemHeight,
                     Theme.toColor(Theme.BG_HOVER, hoverAnim[i] * 0.4f), 12);
 
-            // Icon
+
             float iconAlpha = isActive ? 1.0f : (0.5f + hoverAnim[i] * 0.3f);
             int iconColor = isActive ? Theme.toColor(Theme.PRIMARY)
                     : Theme.toColor(Theme.TEXT_PRIMARY, iconAlpha);
@@ -148,7 +148,7 @@ public class Sidebar {
                     btnX + (btnSize - icoSize.x) / 2, itemY + itemHeight * 0.15f,
                     iconColor, NAV_ICONS[i]);
 
-            // Label
+
             float labelAlpha = isActive ? 1.0f : (0.4f + hoverAnim[i] * 0.4f);
             int labelColor = isActive ? Theme.toColor(Theme.PRIMARY, labelAlpha)
                     : Theme.toColor(Theme.TEXT_MUTED, labelAlpha);
@@ -163,7 +163,7 @@ public class Sidebar {
         ImGui.endChild();
         ImGui.popStyleVar(2);
 
-        // Set cursor for content area (right of sidebar)
+
         ImGui.setCursorPos(WIDTH, 0);
 
         return WIDTH;

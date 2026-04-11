@@ -2,6 +2,8 @@ package screens;
 
 import data.AppConfig;
 import imgui.ImGui;
+import imgui.ImGuiViewport;
+import imgui.flag.ImGuiCond;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiTableColumnFlags;
@@ -25,10 +27,13 @@ public class InventoryScreen {
     private int selectedCategory = 0;
     private final ImString searchBuffer = new ImString(128);
 
-    // Modal state — shared between Add and Edit modes
-    private boolean openModal      = false;
-    private String  editingId      = null;   // null = Add mode, non-null = Edit mode
-    private String  pendingDeleteId = null;  // set when delete is requested
+
+    private boolean openModal       = false;
+    private String  editingId       = null;
+    private String  pendingDeleteId = null;
+    private String  pendingStockInId = null;
+    private final ImString stockInQty = new ImString(8);
+    private String stockInError = "";
 
     private final ImString  formId            = new ImString(32);
     private final ImString  formName          = new ImString(128);
@@ -58,25 +63,32 @@ public class InventoryScreen {
         float pad = Math.max(10, contentW * 0.015f);
         ImGui.setCursorPos(pad, pad);
 
-        // Search bar
+
         WidgetHelper.searchBar("##inv_search", searchBuffer, ImGui.getContentRegionAvailX() - pad);
         ImGui.spacing();
 
-        // Category label + row
+
+        String[] catNames = new String[AppConfig.INV_CAT_NAMES.length + 1];
+        String[] catIcons = new String[AppConfig.INV_CAT_ICONS.length + 1];
+        catNames[0] = "All";
+        catIcons[0] = resources.FontAwesomeData.ICON_FA_LIST;
+        System.arraycopy(AppConfig.INV_CAT_NAMES, 0, catNames, 1, AppConfig.INV_CAT_NAMES.length);
+        System.arraycopy(AppConfig.INV_CAT_ICONS, 0, catIcons, 1, AppConfig.INV_CAT_ICONS.length);
+
         ImGui.setCursorPosX(pad);
         ImGui.textColored(Theme.TEXT_SECONDARY.x, Theme.TEXT_SECONDARY.y, Theme.TEXT_SECONDARY.z, 1, "Category");
         ImGui.spacing();
         ImGui.setCursorPosX(pad);
         float catAnim = AnimationHelper.computeProgress(enterTime, 0.8f);
-        selectedCategory = WidgetHelper.categoryRow(AppConfig.INV_CAT_NAMES, AppConfig.INV_CAT_ICONS,
-                selectedCategory, catAnim);
+        selectedCategory = WidgetHelper.categoryRow(catNames, catIcons, selectedCategory, catAnim);
         ImGui.spacing();
 
-        // Category title + Add button
+
+
+        String catTitle = selectedCategory == 0 ? "All Items" : AppConfig.INV_CAT_NAMES[selectedCategory - 1];
         ImGui.setCursorPosX(pad);
         ImGui.setWindowFontScale(1.3f);
-        ImGui.textColored(Theme.TEXT_PRIMARY.x, Theme.TEXT_PRIMARY.y, Theme.TEXT_PRIMARY.z, 1,
-                AppConfig.INV_CAT_NAMES[selectedCategory]);
+        ImGui.textColored(Theme.TEXT_PRIMARY.x, Theme.TEXT_PRIMARY.y, Theme.TEXT_PRIMARY.z, 1, catTitle);
         ImGui.setWindowFontScale(1.0f);
 
         ImGui.sameLine();
@@ -87,14 +99,18 @@ public class InventoryScreen {
         ImGui.pushStyleColor(ImGuiCol.ButtonActive,  Theme.ACCENT.x * 0.85f, Theme.ACCENT.y * 0.85f, Theme.ACCENT.z * 0.85f, 1f);
         if (ImGui.button("+ Add Item", addBtnW, 0)) {
             clearForm();
-            formCategoryIndex.set(selectedCategory);
+            formCategoryIndex.set(selectedCategory > 0 ? selectedCategory - 1 : 0);
+            int nextNum = InventoryManager.getInstance().getItems().size() + 1;
+            formId.set(String.format("ITEM-%03d", nextNum));
+            formMfgDate.set(java.time.LocalDate.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy")));
             editingId  = null;
             openModal  = true;
         }
         ImGui.popStyleColor(3);
         ImGui.spacing();
 
-        // Table — 8 columns including Actions
+
         ImGui.setCursorPosX(pad);
         float tableW = ImGui.getContentRegionAvailX() - pad;
         float tableH = ImGui.getContentRegionAvailY() - pad;
@@ -118,7 +134,7 @@ public class InventoryScreen {
 
             List<InventoryItem> visible = new ArrayList<>();
             for (InventoryItem item : InventoryManager.getInstance().getItems().values()) {
-                if (item.categoryIndex != selectedCategory) continue;
+                if (selectedCategory > 0 && item.categoryIndex != selectedCategory - 1) continue;
                 if (!searchStr.isEmpty()) {
                     boolean match = item.productId.toLowerCase().contains(searchStr)
                             || item.name.toLowerCase().contains(searchStr);
@@ -140,7 +156,7 @@ public class InventoryScreen {
                 ImGui.tableNextColumn(); ImGui.text(item.name);
                 ImGui.tableNextColumn(); ImGui.text(String.format("%.2f", item.unitPrice));
 
-                // Stock — colour-coded
+
                 ImGui.tableNextColumn();
                 if (item.stock <= 0) {
                     ImGui.textColored(Theme.DANGER.x,  Theme.DANGER.y,  Theme.DANGER.z,  1, String.valueOf(item.stock));
@@ -150,11 +166,11 @@ public class InventoryScreen {
                     ImGui.textColored(Theme.SUCCESS.x, Theme.SUCCESS.y, Theme.SUCCESS.z, 1, String.valueOf(item.stock));
                 }
 
-                // Actions — Edit + Delete
+
                 ImGui.tableNextColumn();
                 ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, 4, 2);
 
-                // Edit button
+
                 ImGui.pushStyleColor(ImGuiCol.Button,        Theme.PRIMARY.x, Theme.PRIMARY.y, Theme.PRIMARY.z, 0.7f);
                 ImGui.pushStyleColor(ImGuiCol.ButtonHovered, Theme.PRIMARY.x, Theme.PRIMARY.y, Theme.PRIMARY.z, 1f);
                 if (ImGui.smallButton(FontAwesomeData.ICON_FA_EDIT + "##edit_" + item.productId)) {
@@ -166,11 +182,23 @@ public class InventoryScreen {
 
                 ImGui.sameLine();
 
-                // Delete button
+
                 ImGui.pushStyleColor(ImGuiCol.Button,        Theme.DANGER.x, Theme.DANGER.y, Theme.DANGER.z, 0.7f);
                 ImGui.pushStyleColor(ImGuiCol.ButtonHovered, Theme.DANGER.x, Theme.DANGER.y, Theme.DANGER.z, 1f);
                 if (ImGui.smallButton(FontAwesomeData.ICON_FA_TRASH + "##del_" + item.productId)) {
                     pendingDeleteId = item.productId;
+                }
+                ImGui.popStyleColor(2);
+
+                ImGui.sameLine();
+
+
+                ImGui.pushStyleColor(ImGuiCol.Button,        Theme.SUCCESS.x, Theme.SUCCESS.y, Theme.SUCCESS.z, 0.7f);
+                ImGui.pushStyleColor(ImGuiCol.ButtonHovered, Theme.SUCCESS.x, Theme.SUCCESS.y, Theme.SUCCESS.z, 1f);
+                if (ImGui.smallButton(FontAwesomeData.ICON_FA_PLUS + "##sin_" + item.productId)) {
+                    pendingStockInId = item.productId;
+                    stockInQty.set("");
+                    stockInError = "";
                 }
                 ImGui.popStyleColor(2);
 
@@ -180,7 +208,7 @@ public class InventoryScreen {
             ImGui.endTable();
         }
 
-        // Trigger popups outside the table so the ID stack matches
+
         if (openModal) {
             ImGui.openPopup("##item_modal");
             openModal = false;
@@ -188,21 +216,29 @@ public class InventoryScreen {
         if (pendingDeleteId != null && !ImGui.isPopupOpen("Confirm Delete")) {
             ImGui.openPopup("Confirm Delete");
         }
+        if (pendingStockInId != null && !ImGui.isPopupOpen("Stock In")) {
+            ImGui.openPopup("Stock In");
+        }
 
         renderItemModal();
         renderDeleteConfirm();
+        renderStockIn();
 
         ImGui.endChild();
     }
 
-    // -------------------------------------------------------------------------
-    // Add / Edit modal
-    // -------------------------------------------------------------------------
+
+
+
 
     private void renderItemModal() {
+        ImGuiViewport vp = ImGui.getMainViewport();
+        float cx = vp.getWorkPos().x + vp.getWorkSize().x * 0.5f;
+        float cy = vp.getWorkPos().y + vp.getWorkSize().y * 0.5f;
         ImGui.setNextWindowSize(420, 0);
-        ImBoolean open = new ImBoolean(true);
-        if (!ImGui.beginPopupModal("##item_modal", open, ImGuiWindowFlags.NoResize)) return;
+        ImGui.setNextWindowPos(cx, cy, ImGuiCond.Always, 0.5f, 0.5f);
+        int popupFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize;
+        if (!ImGui.beginPopupModal("##item_modal", new ImBoolean(true), popupFlags)) return;
 
         boolean isEdit = editingId != null;
 
@@ -213,7 +249,7 @@ public class InventoryScreen {
         ImGui.separator();
         ImGui.spacing();
 
-        // Product ID — read-only when editing
+
         ImGui.text("Product ID");
         ImGui.setNextItemWidth(-1);
         if (isEdit) {
@@ -225,19 +261,19 @@ public class InventoryScreen {
         }
         ImGui.spacing();
 
-        // Product Name
+
         ImGui.text("Product Name");
         ImGui.setNextItemWidth(-1);
         ImGui.inputText("##fname", formName);
         ImGui.spacing();
 
-        // Category
+
         ImGui.text("Inventory Category");
         ImGui.setNextItemWidth(-1);
         ImGui.combo("##fcat", formCategoryIndex, AppConfig.INV_CAT_NAMES);
         ImGui.spacing();
 
-        // Unit Price + Stock
+
         float halfW = (ImGui.getContentRegionAvailX() - ImGui.getStyle().getItemSpacingX()) / 2;
         ImGui.text("Unit Price");
         ImGui.setNextItemWidth(halfW);
@@ -249,7 +285,7 @@ public class InventoryScreen {
         ImGui.inputText("##fstock", formStock);
         ImGui.spacing();
 
-        // Mfg Date + Expiry Date
+
         ImGui.text("Manufactured Date");
         ImGui.setNextItemWidth(halfW);
         ImGui.inputText("##fmfg", formMfgDate);
@@ -260,7 +296,7 @@ public class InventoryScreen {
         ImGui.inputText("##fexpiry", formExpiry);
         ImGui.spacing();
 
-        // Show in POS
+
         ImGui.checkbox("Show in POS", formShowInPOS);
         if (formShowInPOS.get()) {
             ImGui.sameLine();
@@ -296,13 +332,18 @@ public class InventoryScreen {
         ImGui.endPopup();
     }
 
-    // -------------------------------------------------------------------------
-    // Delete confirmation
-    // -------------------------------------------------------------------------
+
+
+
 
     private void renderDeleteConfirm() {
+        ImGuiViewport vp = ImGui.getMainViewport();
+        float cx = vp.getWorkPos().x + vp.getWorkSize().x * 0.5f;
+        float cy = vp.getWorkPos().y + vp.getWorkSize().y * 0.5f;
         ImGui.setNextWindowSize(300, 0);
-        if (!ImGui.beginPopupModal("Confirm Delete", new ImBoolean(true), ImGuiWindowFlags.NoResize)) return;
+        ImGui.setNextWindowPos(cx, cy, ImGuiCond.Always, 0.5f, 0.5f);
+        int popupFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize;
+        if (!ImGui.beginPopupModal("Confirm Delete", new ImBoolean(true), popupFlags)) return;
 
         ImGui.spacing();
         ImGui.textColored(Theme.WARNING.x, Theme.WARNING.y, Theme.WARNING.z, 1,
@@ -333,9 +374,77 @@ public class InventoryScreen {
         ImGui.endPopup();
     }
 
-    // -------------------------------------------------------------------------
-    // Save logic
-    // -------------------------------------------------------------------------
+
+
+
+
+    private void renderStockIn() {
+        ImGuiViewport vp = ImGui.getMainViewport();
+        float cx = vp.getWorkPos().x + vp.getWorkSize().x * 0.5f;
+        float cy = vp.getWorkPos().y + vp.getWorkSize().y * 0.5f;
+        ImGui.setNextWindowSize(280, 0);
+        ImGui.setNextWindowPos(cx, cy, ImGuiCond.Always, 0.5f, 0.5f);
+        int popupFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize;
+        if (!ImGui.beginPopupModal("Stock In", new ImBoolean(true), popupFlags)) return;
+
+        InventoryItem item = InventoryManager.getInstance().getItem(pendingStockInId);
+
+        ImGui.spacing();
+        if (item != null) {
+            ImGui.textColored(Theme.TEXT_PRIMARY.x, Theme.TEXT_PRIMARY.y, Theme.TEXT_PRIMARY.z, 1, item.name);
+            ImGui.textColored(Theme.TEXT_MUTED.x, Theme.TEXT_MUTED.y, Theme.TEXT_MUTED.z, 1,
+                    "Current stock: " + item.stock);
+        }
+        ImGui.spacing();
+
+        ImGui.text("Quantity to add:");
+        ImGui.setNextItemWidth(-1);
+        ImGui.inputText("##stockin_qty", stockInQty);
+
+        if (!stockInError.isEmpty()) {
+            ImGui.spacing();
+            ImGui.textColored(Theme.DANGER.x, Theme.DANGER.y, Theme.DANGER.z, 1, stockInError);
+        }
+
+        ImGui.spacing();
+        ImGui.separator();
+        ImGui.spacing();
+
+        float btnW = (ImGui.getContentRegionAvailX() - ImGui.getStyle().getItemSpacingX()) / 2;
+
+        ImGui.pushStyleColor(ImGuiCol.Button,        Theme.SUCCESS.x, Theme.SUCCESS.y, Theme.SUCCESS.z, 1f);
+        ImGui.pushStyleColor(ImGuiCol.ButtonHovered, Theme.SUCCESS.x, Theme.SUCCESS.y, Theme.SUCCESS.z, 0.8f);
+        if (ImGui.button("Confirm", btnW, 0)) {
+            try {
+                int qty = Integer.parseInt(stockInQty.get().trim());
+                if (qty <= 0) {
+                    stockInError = "Quantity must be greater than 0.";
+                } else {
+                    InventoryManager.getInstance().stockIn(pendingStockInId, qty);
+                    pendingStockInId = null;
+                    stockInError = "";
+                    ImGui.closeCurrentPopup();
+                }
+            } catch (NumberFormatException e) {
+                stockInError = "Enter a valid whole number.";
+            }
+        }
+        ImGui.popStyleColor(2);
+
+        ImGui.sameLine();
+        if (ImGui.button("Cancel", btnW, 0)) {
+            pendingStockInId = null;
+            stockInError = "";
+            ImGui.closeCurrentPopup();
+        }
+
+        ImGui.spacing();
+        ImGui.endPopup();
+    }
+
+
+
+
 
     private boolean trySave() {
         String id     = formId.get().trim();
@@ -350,7 +459,7 @@ public class InventoryScreen {
         if (price.isEmpty()) { formError = "Unit Price is required.";   return false; }
         if (stock.isEmpty()) { formError = "Stock is required.";        return false; }
 
-        // Only check duplicate ID when adding a new item
+
         if (editingId == null && InventoryManager.getInstance().containsId(id)) {
             formError = "Product ID \"" + id + "\" already exists.";
             return false;
@@ -384,9 +493,9 @@ public class InventoryScreen {
         return true;
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
+
+
+
 
     private void populateFormForEdit(InventoryItem item) {
         clearForm();

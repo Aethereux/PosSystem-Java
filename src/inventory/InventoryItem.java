@@ -10,7 +10,7 @@ public class InventoryItem {
     public String manufacturedDate;
     public String expiryDate;
 
-    /** -1 = not listed in POS; 0-6 = POS category index */
+    
     public int posCategory;
 
     public InventoryItem(String productId, String name, double unitPrice, int stock,

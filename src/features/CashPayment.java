@@ -10,6 +10,7 @@ public class CashPayment implements PaymentStrategy{
 
     @Override
     public void pay(OrderState amount) {
-
+        System.out.printf("[CashPayment] Order #%04d — Total: %.2f%n",
+                amount.orderNumber, amount.getTotal());
     }
 }

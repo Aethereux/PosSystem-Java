@@ -10,7 +10,7 @@ import ui.Theme;
 
 public class MenuManager {
 
-    // Screen constants
+
     public static final int SCREEN_DASHBOARD = 0;
     public static final int SCREEN_POS = 1;
     public static final int SCREEN_SALES = 2;
@@ -24,7 +24,7 @@ public class MenuManager {
     private static final float TRANSITION_DURATION = 0.35f;
     private boolean initialized = false;
 
-    // Screen instances
+
     private final DashboardScreen dashboardScreen = new DashboardScreen();
     private final POSScreen posScreen = new POSScreen();
     private final SalesScreen salesScreen = new SalesScreen();
@@ -77,7 +77,7 @@ public class MenuManager {
                 | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
         ImGui.begin("Main", flags);
 
-        // Handle transition fade-in (only render current screen to avoid duplicate widget IDs)
+
         if (transitionStartTime >= 0) {
             float progress = AnimationHelper.computeProgress(transitionStartTime, TRANSITION_DURATION);
             if (progress >= 1.0f) {

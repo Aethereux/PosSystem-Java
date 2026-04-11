@@ -8,9 +8,7 @@ import imgui.ImVec4;
 
 public class ChartRenderer {
 
-    /**
-     * Draws an animated donut/pie chart.
-     */
+    
     public static void drawPieChart(ImDrawList dl, float cx, float cy, float radius,
                                      float[] values, String[] labels, ImVec4[] colors,
                                      float animProgress) {
@@ -19,13 +17,12 @@ public class ChartRenderer {
         if (total <= 0) return;
 
         float animatedTotal = total * animProgress;
-        float startAngle = (float) (-Math.PI / 2); // Start from top
+        float startAngle = (float) (-Math.PI / 2);
         float accumulated = 0;
 
         for (int i = 0; i < values.length; i++) {
             accumulated += values[i];
             if (accumulated > animatedTotal) {
-                // Partial last slice
                 float sliceValue = values[i] - (accumulated - animatedTotal);
                 float endAngle = startAngle + (sliceValue / total) * 2 * (float) Math.PI;
                 drawSlice(dl, cx, cy, radius, startAngle, endAngle, Theme.toColor(colors[i % colors.length]));
@@ -36,23 +33,59 @@ public class ChartRenderer {
             startAngle = endAngle;
         }
 
-        // Donut hole
+
         float innerRadius = radius * 0.55f;
         drawFilledCircle(dl, cx, cy, innerRadius, Theme.toColor(Theme.BG_PANEL));
 
-        // Center text
+
+        ImFont font = ImGui.getFont();
+        float baseFontSize = font.getFontSize() * ImGui.getIO().getFontGlobalScale();
+        int lblSize = Math.max(8, (int) (baseFontSize * 0.72f));
+        float labelRadius = (innerRadius + radius) / 2f;
+
+        startAngle = (float) (-Math.PI / 2);
+        accumulated = 0;
+        for (int i = 0; i < values.length; i++) {
+            float sliceAngle = (values[i] / total) * 2 * (float) Math.PI;
+            accumulated += values[i];
+
+
+            if (accumulated <= animatedTotal) {
+                float midAngle = startAngle + sliceAngle / 2f;
+                float maxW = 2f * labelRadius * (float) Math.sin(sliceAngle / 2f) - 6f;
+
+                if (maxW >= 16f && sliceAngle >= 0.25f) {
+                    String text = labels[i];
+                    ImVec2 sz = new ImVec2();
+                    font.calcTextSizeA(sz, lblSize, Float.MAX_VALUE, -1, text);
+
+
+                    while (sz.x > maxW && text.length() > 1) {
+                        text = text.substring(0, text.length() - 1);
+                        font.calcTextSizeA(sz, lblSize, Float.MAX_VALUE, -1, text + "...");
+                    }
+                    if (!text.equals(labels[i])) text += "...";
+                    font.calcTextSizeA(sz, lblSize, Float.MAX_VALUE, -1, text);
+
+                    float lx = cx + (float) Math.cos(midAngle) * labelRadius - sz.x / 2f;
+                    float ly = cy + (float) Math.sin(midAngle) * labelRadius - sz.y / 2f;
+                    dl.addText(font, lblSize, lx, ly, Theme.toColor(1f, 1f, 1f, animProgress), text);
+                }
+            }
+
+            startAngle += sliceAngle;
+        }
+
+
         String totalLabel = String.valueOf((int) total);
         ImVec2 textSize = new ImVec2();
         ImGui.calcTextSize(textSize, totalLabel);
         dl.addText(cx - textSize.x / 2, cy - textSize.y / 2 - 4, Theme.toColor(Theme.TEXT_PRIMARY), totalLabel);
-
         ImGui.calcTextSize(textSize, "Total");
         dl.addText(cx - textSize.x / 2, cy + 6, Theme.toColor(Theme.TEXT_MUTED), "Total");
     }
 
-    /**
-     * Draws the legend for a pie chart.
-     */
+    
     public static void drawPieLegend(ImDrawList dl, float x, float y, float[] values, String[] labels,
                                       ImVec4[] colors, float animProgress) {
         float total = 0;
@@ -75,9 +108,7 @@ public class ChartRenderer {
         }
     }
 
-    /**
-     * Draws an animated horizontal bar chart with two datasets (e.g., Cost and Profit).
-     */
+    
     public static void drawHorizontalBarChart(ImDrawList dl, float x, float y, float w, float h,
                                                String[] labels, float[][] data, String[] datasetLabels,
                                                ImVec4[] datasetColors, float animProgress) {
@@ -86,14 +117,14 @@ public class ChartRenderer {
         ImFont font = ImGui.getFont();
         float baseFontSize = font.getFontSize() * ImGui.getIO().getFontGlobalScale();
 
-        // Dynamic label width — 25% of chart width, capped
+
         float labelWidth = Math.min(w * 0.25f, 140);
         float valueWidth = 70;
         float barAreaWidth = w - labelWidth - valueWidth;
         float barGroupHeight = h / labels.length;
         float barHeight = (barGroupHeight - 8) / data.length;
 
-        // Find max value for scaling
+
         float maxVal = 0;
         for (float[] dataset : data) {
             for (float v : dataset) maxVal = Math.max(maxVal, v);
@@ -106,7 +137,7 @@ public class ChartRenderer {
             itemAnim = AnimationHelper.easeOutCubic(itemAnim);
             if (itemAnim <= 0) continue;
 
-            // Label — shrink font to fit labelWidth
+
             int lblFontSize = (int) baseFontSize;
             ImVec2 lblSize = new ImVec2();
             font.calcTextSizeA(lblSize, lblFontSize, Float.MAX_VALUE, -1, labels[row]);
@@ -117,7 +148,7 @@ public class ChartRenderer {
             dl.addText(font, lblFontSize, x, rowY + (barGroupHeight - lblSize.y) / 2,
                        Theme.toColor(Theme.TEXT_SECONDARY, itemAnim), labels[row]);
 
-            // Bars for each dataset
+
             for (int d = 0; d < data.length; d++) {
                 float barY = rowY + d * (barHeight + 2) + 2;
                 float barW = (data[d][row] / maxVal) * barAreaWidth * itemAnim;
@@ -125,7 +156,7 @@ public class ChartRenderer {
 
                 dl.addRectFilled(x + labelWidth, barY, x + labelWidth + barW, barY + barHeight, barColor, 4);
 
-                // Value label
+
                 if (itemAnim > 0.5f) {
                     String val = String.format("%.0f", data[d][row]);
                     dl.addText(x + labelWidth + barW + 5, barY,
@@ -134,7 +165,7 @@ public class ChartRenderer {
             }
         }
 
-        // Legend
+
         float legendX = x + w - 200;
         float legendY = y - 25;
         for (int d = 0; d < datasetLabels.length; d++) {
